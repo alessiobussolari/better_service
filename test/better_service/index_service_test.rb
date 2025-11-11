@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require_relative "../../lib/better_service/index_service"
+require_relative "../../lib/better_service/services/index_service"
 
 module BetterService
   class IndexServiceTest < ActiveSupport::TestCase
@@ -22,11 +22,11 @@ module BetterService
     # ========================================
 
     test "IndexService sets action_name to :index" do
-      assert_equal :index, IndexService._action_name
+      assert_equal :index, Services::IndexService._action_name
     end
 
     test "IndexService returns items with metadata containing action: :index" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         search_with do
           { items: [1, 2, 3] }
         end
@@ -42,7 +42,7 @@ module BetterService
     end
 
     test "IndexService can include stats in metadata" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         search_with do
           { items: [1, 2, 3] }
         end
@@ -68,7 +68,7 @@ module BetterService
     end
 
     test "IndexService can include pagination in metadata" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         search_with do
           { items: (1..25).to_a }
         end
@@ -104,7 +104,7 @@ module BetterService
     end
 
     test "IndexService can include both stats and pagination in metadata" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         search_with do
           { items: [1, 2, 3, 4, 5] }
         end
@@ -130,7 +130,7 @@ module BetterService
     end
 
     test "IndexService works with empty items" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         search_with do
           { items: [] }
         end
@@ -155,7 +155,7 @@ module BetterService
         end
       end
 
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         self.presenter test_presenter
 
         search_with do
@@ -179,7 +179,7 @@ module BetterService
     # ========================================
 
     test "IndexService integrates with Validatable" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         schema do
           optional(:page).filled(:integer, gteq?: 1)
         end
@@ -195,14 +195,14 @@ module BetterService
       assert result[:success]
 
       # Invalid params
-      service = service_class.new(@user, params: { page: 0 })
-      result = service.call
-      refute result[:success]
-      assert_equal "Validation failed", result[:error]
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        service_class.new(@user, params: { page: 0 })
+      end
+      assert_equal :validation_failed, error.code
     end
 
     test "IndexService integrates with Viewable" do
-      service_class = Class.new(IndexService) do
+      service_class = Class.new(Services::IndexService) do
         viewer do |processed, _transformed, _result|
           {
             page_title: "Index Page",

@@ -24,11 +24,11 @@ module BetterService
     # ========================================
 
     test "initialize requires schema to be defined" do
-      service_class = Class.new(Base)
+      service_class = Class.new(Services::Base)
       # Remove schema from class (simulating no schema defined)
       service_class._schema = nil
 
-      error = assert_raises(SchemaRequiredError) do
+      error = assert_raises(BetterService::Errors::Configuration::SchemaRequiredError) do
         service_class.new(@user, params: {})
       end
 
@@ -37,8 +37,8 @@ module BetterService
     end
 
     test "initialize requires user by default" do
-      error = assert_raises(ArgumentError) do
-        Base.new(nil, params: {})
+      error = assert_raises(BetterService::Errors::Configuration::NilUserError) do
+        Services::Base.new(nil, params: {})
       end
 
       assert_match(/User cannot be nil/, error.message)
@@ -46,7 +46,7 @@ module BetterService
     end
 
     test "initialize accepts user and params" do
-      service = Base.new(@user, params: @params)
+      service = Services::Base.new(@user, params: @params)
 
       assert_equal @user, service.instance_variable_get(:@user)
       assert_kind_of Hash, service.instance_variable_get(:@params)
@@ -56,7 +56,7 @@ module BetterService
       # Simulate ActionController::Parameters
       ac_params = ActionController::Parameters.new(page: "1", search: "test", controller: "bookings")
 
-      service = Base.new(@user, params: ac_params)
+      service = Services::Base.new(@user, params: ac_params)
       params = service.instance_variable_get(:@params)
 
       assert_kind_of Hash, params
@@ -68,7 +68,7 @@ module BetterService
     test "initialize converts plain hash params to symbol keys" do
       plain_hash = { "page" => 1, "search" => "test" }
 
-      service = Base.new(@user, params: plain_hash)
+      service = Services::Base.new(@user, params: plain_hash)
       params = service.instance_variable_get(:@params)
 
       assert params.key?(:page)
@@ -77,14 +77,14 @@ module BetterService
     end
 
     test "initialize handles nil params gracefully" do
-      service = Base.new(@user, params: nil)
+      service = Services::Base.new(@user, params: nil)
       params = service.instance_variable_get(:@params)
 
       assert_equal({}, params)
     end
 
     test "initialize handles empty params" do
-      service = Base.new(@user, params: {})
+      service = Services::Base.new(@user, params: {})
       params = service.instance_variable_get(:@params)
 
       assert_equal({}, params)
@@ -95,7 +95,7 @@ module BetterService
     # ========================================
 
     test "success_result returns hash with success true" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:success_result, "Operation successful")
 
       assert result[:success]
@@ -103,7 +103,7 @@ module BetterService
     end
 
     test "success_result merges additional data" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:success_result, "Done", { items: [1, 2, 3], count: 3 })
 
       assert result[:success]
@@ -113,7 +113,7 @@ module BetterService
     end
 
     test "failure_result returns hash with success false" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:failure_result, "Operation failed")
 
       refute result[:success]
@@ -121,7 +121,7 @@ module BetterService
     end
 
     test "failure_result includes errors hash" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       errors = { name: "can't be blank", email: "is invalid" }
       result = service.send(:failure_result, "Validation failed", errors)
 
@@ -131,7 +131,7 @@ module BetterService
     end
 
     test "failure_result handles empty errors" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:failure_result, "Something went wrong")
 
       refute result[:success]
@@ -140,7 +140,7 @@ module BetterService
     end
 
     test "success_result includes metadata with action when action_name is set" do
-      service_class = Class.new(Base) do
+      service_class = Class.new(Services::Base) do
         self._action_name = :test_action
       end
       service = service_class.new(@user)
@@ -154,7 +154,7 @@ module BetterService
     end
 
     test "success_result includes empty metadata when action_name is not set" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:success_result, "Success", { data: "value" })
 
       assert result[:success]
@@ -165,7 +165,7 @@ module BetterService
     end
 
     test "success_result merges additional metadata if provided" do
-      service_class = Class.new(Base) do
+      service_class = Class.new(Services::Base) do
         self._action_name = :test_action
       end
       service = service_class.new(@user)
@@ -187,7 +187,7 @@ module BetterService
     # ========================================
 
     # Test service that tracks phase execution
-    class TestService < Base
+    class TestService < Services::Base
       attr_reader :phases_executed
 
       def initialize(user, params: {})
@@ -217,7 +217,7 @@ module BetterService
     end
 
     test "call method exists and returns hash" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.call
 
       assert_kind_of Hash, result
@@ -247,22 +247,27 @@ module BetterService
       assert_equal "All phases completed", result[:message]
     end
 
-    test "call handles errors gracefully" do
-      service = Class.new(Base) do
+    test "call raises ExecutionError for unexpected errors" do
+      service = Class.new(Services::Base) do
+        schema { }
+
         def search
           raise StandardError, "Database connection failed"
         end
       end.new(@user)
 
-      result = service.call
+      error = assert_raises(BetterService::Errors::Runtime::ExecutionError) do
+        service.call
+      end
 
-      refute result[:success]
-      assert_match(/error occurred/i, result[:error])
-      assert_match(/Database connection failed/, result[:error])
+      assert_match(/Service execution failed/, error.message)
+      assert_equal :execution_error, error.code
+      assert_equal "StandardError", error.original_error.class.name
+      assert_match(/Database connection failed/, error.original_error.message)
     end
 
     test "phases can be overridden in subclass" do
-      custom_service = Class.new(Base) do
+      custom_service = Class.new(Services::Base) do
         def search
           { custom: "data" }
         end
@@ -280,14 +285,14 @@ module BetterService
     end
 
     test "default search returns empty hash" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       result = service.send(:search)
 
       assert_equal({}, result)
     end
 
     test "default process returns data unchanged" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       data = { foo: "bar" }
       result = service.send(:process, data)
 
@@ -295,7 +300,7 @@ module BetterService
     end
 
     test "default transform returns data unchanged" do
-      service = Base.new(@user)
+      service = Services::Base.new(@user)
       data = { foo: "bar" }
       result = service.send(:transform, data)
 
@@ -307,12 +312,12 @@ module BetterService
     # ========================================
 
     # Service that allows nil user
-    class SystemService < Base
+    class SystemService < Services::Base
       self._allow_nil_user = true
     end
 
     test "allow_nil_user defaults to false" do
-      assert_equal false, Base._allow_nil_user
+      assert_equal false, Services::Base._allow_nil_user
     end
 
     test "allow_nil_user can be set to true" do
@@ -343,7 +348,7 @@ module BetterService
     # ========================================
 
     # Service with schema validation
-    class ValidatedService < Base
+    class ValidatedService < Services::Base
       schema do
         required(:name).filled(:string)
         required(:age).filled(:integer)
@@ -358,30 +363,35 @@ module BetterService
       assert_empty service.validation_errors
     end
 
-    test "stores validation errors on failure" do
-      service = ValidatedService.new(@user, params: { name: "", age: "invalid" })
+    test "raises ValidationError on validation failure during initialize" do
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        ValidatedService.new(@user, params: { name: "", age: "invalid" })
+      end
 
-      refute service.valid?
-      assert service.validation_errors.key?(:name)
-      assert service.validation_errors.key?(:age)
+      assert_match(/validation failed/i, error.message)
+      assert_equal :validation_failed, error.code
+      assert error.context[:validation_errors].key?(:name)
+      assert error.context[:validation_errors].key?(:age)
     end
 
-    test "call returns failure if validation fails" do
-      service = ValidatedService.new(@user, params: { name: "", age: "not_a_number" })
-      result = service.call
+    test "ValidationError contains formatted validation errors in context" do
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        ValidatedService.new(@user, params: { name: "", age: "invalid" })
+      end
 
-      refute result[:success]
-      assert_match(/validation failed/i, result[:error])
-      assert result[:errors].is_a?(Hash)
+      validation_errors = error.context[:validation_errors]
+      assert validation_errors.is_a?(Hash)
+      assert validation_errors[:name].is_a?(Array)
+      assert validation_errors[:age].is_a?(Array)
     end
 
-    test "validation errors formatted correctly" do
-      service = ValidatedService.new(@user, params: { name: "", age: "invalid" })
+    test "ValidationError includes service name and params in context" do
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        ValidatedService.new(@user, params: { name: "", age: "invalid" })
+      end
 
-      errors = service.validation_errors
-      assert errors.is_a?(Hash)
-      assert errors[:name].is_a?(Array)
-      assert errors[:age].is_a?(Array)
+      assert_equal "BetterService::BaseTest::ValidatedService", error.context[:service]
+      assert error.context[:params].is_a?(Hash)
     end
 
     # ========================================
@@ -389,7 +399,7 @@ module BetterService
     # ========================================
 
     # Service using phase blocks DSL
-    class BlockBasedService < Base
+    class BlockBasedService < Services::Base
       search_with do
         { users: ["Alice", "Bob"] }
       end
@@ -424,7 +434,7 @@ module BetterService
     end
 
     test "phase blocks DSL coexists with method overrides" do
-      hybrid_service = Class.new(Base) do
+      hybrid_service = Class.new(Services::Base) do
         search_with do
           { value: 10 }
         end

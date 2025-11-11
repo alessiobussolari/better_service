@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require_relative "../../lib/better_service/show_service"
+require_relative "../../lib/better_service/services/show_service"
 
 module BetterService
   class ShowServiceTest < ActiveSupport::TestCase
@@ -22,11 +22,11 @@ module BetterService
     # ========================================
 
     test "ShowService sets action_name to :show" do
-      assert_equal :show, ShowService._action_name
+      assert_equal :show, Services::ShowService._action_name
     end
 
     test "ShowService returns resource with metadata containing action: :show" do
-      service_class = Class.new(ShowService) do
+      service_class = Class.new(Services::ShowService) do
         search_with do
           { resource: { id: 1, title: "Test" } }
         end
@@ -42,7 +42,7 @@ module BetterService
     end
 
     test "ShowService can include additional metadata" do
-      service_class = Class.new(ShowService) do
+      service_class = Class.new(Services::ShowService) do
         search_with do
           { resource: { id: 1, title: "Test" } }
         end
@@ -66,7 +66,7 @@ module BetterService
     end
 
     test "ShowService integrates with Validatable" do
-      service_class = Class.new(ShowService) do
+      service_class = Class.new(Services::ShowService) do
         schema do
           required(:id).filled(:integer, gteq?: 1)
         end
@@ -81,15 +81,15 @@ module BetterService
       result = service.call
       assert result[:success]
 
-      # Invalid params
-      service = service_class.new(@user, params: { id: 0 })
-      result = service.call
-      refute result[:success]
-      assert_equal "Validation failed", result[:error]
+      # Invalid params - should raise during initialize
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        service_class.new(@user, params: { id: 0 })
+      end
+      assert_equal :validation_failed, error.code
     end
 
     test "ShowService integrates with Viewable" do
-      service_class = Class.new(ShowService) do
+      service_class = Class.new(Services::ShowService) do
         viewer do |processed, _transformed, _result|
           {
             page_title: "Show Page",
@@ -121,7 +121,7 @@ module BetterService
         end
       end
 
-      service_class = Class.new(ShowService) do
+      service_class = Class.new(Services::ShowService) do
         self.presenter test_presenter
 
         search_with do

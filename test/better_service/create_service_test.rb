@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require_relative "../../lib/better_service/create_service"
+require_relative "../../lib/better_service/services/create_service"
 
 module BetterService
   class CreateServiceTest < ActiveSupport::TestCase
@@ -22,11 +22,11 @@ module BetterService
     # ========================================
 
     test "CreateService sets action_name to :created" do
-      assert_equal :created, CreateService._action_name
+      assert_equal :created, Services::CreateService._action_name
     end
 
     test "CreateService returns resource with metadata containing action: :created" do
-      service_class = Class.new(CreateService) do
+      service_class = Class.new(Services::CreateService) do
         search_with do
           {}
         end
@@ -46,7 +46,7 @@ module BetterService
     end
 
     test "CreateService validates params before processing" do
-      service_class = Class.new(CreateService) do
+      service_class = Class.new(Services::CreateService) do
         schema do
           required(:title).filled(:string)
         end
@@ -60,16 +60,17 @@ module BetterService
         end
       end
 
-      # Invalid params
-      service = service_class.new(@user, params: {})
-      result = service.call
+      # Invalid params - should raise during initialize
+      error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+        service_class.new(@user, params: {})
+      end
 
-      refute result[:success]
-      assert_equal "Validation failed", result[:error]
+      assert_equal :validation_failed, error.code
+      assert error.context[:validation_errors].key?(:title)
     end
 
     test "CreateService message defaults to created successfully" do
-      service_class = Class.new(CreateService) do
+      service_class = Class.new(Services::CreateService) do
         search_with do
           {}
         end

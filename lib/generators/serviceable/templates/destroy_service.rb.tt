@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+class <%= class_name %>::DestroyService < BetterService::Services::DestroyService
+  # Database transactions are ENABLED by default for destroy operations
+  # The process block will automatically run inside a transaction
+  # To disable: with_transaction false
+
+  # Schema for validating params
+  schema do
+    required(:id).filled
+  end
+
+  # Authorization (optional) - Runs BEFORE search phase
+  # Uncomment and customize for your needs:
+  #
+  # authorize_with do
+  #   # Example: Check ownership or admin role
+  #   <%= file_name %> = <%= class_name %>.find(params[:id])
+  #   user.admin? || <%= file_name %>.user_id == user.id
+  # end
+
+  # Phase 1: Search - Load the resource
+  search_with do
+    { resource: user.<%= plural_table_name %>.find(params[:id]) }
+  end
+
+  # Phase 2: Process - Delete the resource (runs in transaction)
+  process_with do |data|
+    <%= file_name %> = data[:resource]
+    <%= file_name %>.destroy!
+    { resource: <%= file_name %> }
+  end
+
+  # Phase 4: Respond - Format response (optional override)
+  respond_with do |data|
+    success_result("<%= human_name %> deleted successfully", data)
+  end
+end
+<% end -%>

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "BetterService",
+  "description": "BetterService is a service object framework for Ruby/Rails applications, designed for the Better* gems ecosystem. It provides 6 specialized service types (Index, Show, Create, Update, Destroy, Action), 5-phase execution flow (Validation → Authorization → Search → Process → Transform → Respond), schema validation with Dry::Schema, automatic transaction management, cache invalidation, presenter integration, workflow composition with automatic rollback support, and built-in instrumentation with ActiveSupport::Notifications (service lifecycle events, cache events, StatsSubscriber for metrics, LogSubscriber for logging, custom subscriber support).",
+  "branch": "main",
+  "folders": [
+    "context7",
+    "context7/services",
+    "context7/workflows",
+    "context7/generators",
+    "context7/examples",
+    "context7/advanced"
+  ],
+  "excludeFolders": [
+    "test",
+    "lib",
+    "docs",
+    "bin",
+    "plans",
+    ".claude",
+    ".github",
+    ".git",
+    "pkg",
+    "coverage"
+  ],
+  "excludeFiles": [
+    "CHANGELOG.md",
+    "changelog.md",
+    "CHANGELOG.mdx",
+    "changelog.mdx",
+    "LICENSE.md",
+    "license.md",
+    "MIT-LICENSE",
+    "LICENSE.txt",
+    "CODE_OF_CONDUCT.md",
+    "code_of_conduct.md",
+    "CLAUDE.md",
+    "Gemfile",
+    "Gemfile.lock",
+    "Rakefile",
+    ".gitignore",
+    ".rubocop.yml",
+    ".rspec",
+    ".yardopts",
+    "better_service.gemspec"
+  ],
+  "rules": [
+    "ALWAYS use DSL methods: process_with do |data|, search_with do, respond_with do |data| - NEVER use def process(data), def search, def respond",
+    "NEVER call services from within other services - ALWAYS use workflows for multi-service operations to ensure automatic rollback",
+    "All services follow 5-phase flow: Validation (schema) → Authorization (authorize_with) → Search (search_with) → Process (process_with) → Transform (presenter) → Respond (respond_with)",
+    "6 service types: IndexService (lists, returns :items), ShowService (single resource, returns :resource), CreateService (creation, transactional, returns :resource), UpdateService (updates, transactional, returns :resource), DestroyService (deletion, transactional, returns :resource), ActionService (custom operations, configurable transaction)",
+    "Schema validation uses Dry::Schema - always define schema do block with required/optional fields, use type validations, custom rules with rule(:field) do",
+    "Authorization with authorize_with do block - check user permissions, resource ownership, or business rules - raises AuthorizationError if false",
+    "Transactions are automatic for Create/Update/Destroy services (self._transactional = true by default) - everything rolls back on error",
+    "Cache invalidation: define cache_contexts :context_name, then call invalidate_cache_for(user) in process_with to clear related caches",
+    "Presenters format output: presenter PresenterClass, must implement self.present(resource) class method, applied automatically before respond",
+    "Workflows compose services: step :name, with: ServiceClass, params: ->(context) { {} }, if: ->(context) { condition }, on_error: ->(context, error) { log }",
+    "Workflow context accumulates results: starts with params, each step adds keys, accessible in params mapping and conditions",
+    "Generators: rails g serviceable:index/show/create/update/destroy/action/workflow/scaffold ModelName with options --cache --authorize --presenter",
+    "Service initialization requires user by default (use self._allow_nil_user = true for public services), params are always validated against schema",
+    "Return format: { success: true, message: String, metadata: { action: Symbol }, items: Array or resource: Object }",
+    "Error handling: services raise exceptions (ValidationError, AuthorizationError, ExecutionError) - never return error hashes, always use begin/rescue in controllers",
+    "Instrumentation automatic: all services publish ActiveSupport::Notifications events (service.started, service.completed, service.failed, cache.hit, cache.miss) with payloads including service_name, user_id, duration, params, error details",
+    "Built-in metrics: enable StatsSubscriber (config.stats_subscriber_enabled = true, default) to track executions, success/failure rate, avg duration, cache hit rate, error types via BetterService::Subscribers::StatsSubscriber.stats and .summary",
+    "Built-in logging: enable LogSubscriber (config.log_subscriber_enabled = true, default) for automatic Rails.logger output with [BetterService] prefix - INFO for lifecycle, ERROR for failures, DEBUG for cache events",
+    "Custom subscribers: create subscribers with ActiveSupport::Notifications.subscribe('service.completed') for integration with monitoring systems, metrics collection, alerts, or custom logging",
+    "Instrumentation configuration: use config.instrumentation_enabled (default true), config.instrumentation_include_args (default true), config.instrumentation_include_result (default false), config.instrumentation_excluded_services array",
+    "Instrumentation security: exclude sensitive services from instrumentation (Authentication, Payment, ChangePassword), never log passwords/tokens/credit cards, sanitize params in custom subscribers, disable include_args in production if needed"
+  ],
+  "previousVersions": [
+    {
+      "tag": "v0.1.0",
+      "title": "version 0.1.0 (initial release) - 6 service types, workflows, generators, cache management"
+    }
+  ]
+}

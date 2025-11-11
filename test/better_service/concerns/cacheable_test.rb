@@ -16,7 +16,7 @@ module BetterService
       end
 
       # Service with cache configured
-      class CachedService < Base
+      class CachedService < Services::Base
         cache_key "test_service"
         cache_ttl 30.minutes
         cache_contexts "bookings", "sidebar"
@@ -27,7 +27,7 @@ module BetterService
       end
 
       # Service without cache
-      class UncachedService < Base
+      class UncachedService < Services::Base
         search_with do
           { value: rand(1000) }
         end
@@ -64,19 +64,23 @@ module BetterService
 
         CacheServiceMock.reset!
 
-        # Stub CacheService constant
-        unless defined?(BetterService::CacheService)
-          BetterService.const_set(:CacheService, CacheServiceMock)
+        # Replace CacheService with mock
+        if defined?(BetterService::CacheService)
+          @original_cache_service = BetterService.send(:remove_const, :CacheService)
         end
+        BetterService.const_set(:CacheService, CacheServiceMock)
       end
 
       def teardown
         # Restore original cache
         Rails.cache = @original_cache
 
-        # Remove stub
+        # Restore original CacheService
         if defined?(BetterService::CacheService)
           BetterService.send(:remove_const, :CacheService)
+        end
+        if @original_cache_service
+          BetterService.const_set(:CacheService, @original_cache_service)
         end
       end
 
@@ -97,9 +101,9 @@ module BetterService
       end
 
       test "cache attributes have correct defaults" do
-        assert_nil Base._cache_key
-        assert_equal 15.minutes, Base._cache_ttl
-        assert_equal [], Base._cache_contexts
+        assert_nil Services::Base._cache_key
+        assert_equal 15.minutes, Services::Base._cache_ttl
+        assert_equal [], Services::Base._cache_contexts
       end
 
       test "cache_enabled? returns true when cache_key present" do
@@ -109,7 +113,7 @@ module BetterService
       end
 
       test "cache_enabled? returns false when no cache_key" do
-        service = Base.new(@user)
+        service = Services::Base.new(@user)
 
         refute service.send(:cache_enabled?)
       end
@@ -237,8 +241,8 @@ module BetterService
         service1 = CachedService.new(user1, params: { page: 1 })
         service2 = CachedService.new(user2, params: { page: 1 })
 
-        result1 = service1.call
-        result2 = service2.call
+        service1.call
+        service2.call
 
         key1 = service1.send(:build_cache_key, user1)
         key2 = service2.send(:build_cache_key, user2)
@@ -279,7 +283,7 @@ module BetterService
       end
 
       test "invalidate_cache_for does nothing when no contexts" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           cache_key "test"
         end.new(@user)
 
@@ -301,7 +305,7 @@ module BetterService
       end
 
       test "invalidate_cache_for handles single context" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           cache_contexts "bookings"
         end.new(@user)
 

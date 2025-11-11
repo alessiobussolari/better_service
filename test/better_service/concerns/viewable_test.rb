@@ -29,7 +29,7 @@ module BetterService
       end
 
       # Service with viewer enabled
-      class ServiceWithViewer < Base
+      class ServiceWithViewer < Services::Base
         viewer do |processed, transformed, result|
           {
             page_title: "Test Page",
@@ -44,7 +44,7 @@ module BetterService
       end
 
       # Service with viewer accessing service state
-      class ServiceWithViewerContext < Base
+      class ServiceWithViewerContext < Services::Base
         viewer do |processed, transformed, result|
           {
             page_title: "Items for #{user.name}",
@@ -71,8 +71,8 @@ module BetterService
       end
 
       test "viewer disabled by default" do
-        refute Base._viewer_enabled
-        assert_nil Base._viewer_block
+        refute Services::Base._viewer_enabled
+        assert_nil Services::Base._viewer_block
       end
 
       test "viewer configuration inherited by subclasses" do
@@ -96,7 +96,7 @@ module BetterService
 
       test "viewer block receives processed data as first argument" do
         received_args = []
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer do |processed, transformed, result|
             received_args << processed
             {}
@@ -111,7 +111,7 @@ module BetterService
 
       test "viewer block receives transformed data as second argument" do
         received_args = []
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer do |processed, transformed, result|
             received_args << transformed
             {}
@@ -128,19 +128,19 @@ module BetterService
 
       test "viewer block receives result as third argument" do
         received_args = []
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer do |processed, transformed, result|
             received_args << result
             {}
           end
         end.new(@user)
 
-        result = service.call
+        service.call
         assert received_args.first[:success]
       end
 
       test "viewer return value merged into result under :view key" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer do |processed, transformed, result|
             { page_title: "Test Page", actions: [:create, :edit] }
           end
@@ -157,14 +157,14 @@ module BetterService
       # ========================================
 
       test "viewer not executed when disabled" do
-        service = Base.new(@user)
+        service = Services::Base.new(@user)
         result = service.call
 
         refute result.key?(:view)
       end
 
       test "viewer not executed when no block" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           self._viewer_enabled = true
           # No block defined
         end.new(@user)
@@ -180,7 +180,7 @@ module BetterService
       end
 
       test "viewer_enabled? returns false when no block" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer true
         end.new(@user)
 
@@ -192,7 +192,7 @@ module BetterService
       # ========================================
 
       test "viewer with presenter receives transformed data" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           presenter DummyPresenter
 
           viewer do |processed, transformed, result|
@@ -219,7 +219,7 @@ module BetterService
       end
 
       test "viewer preserves original result data" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           viewer do |processed, transformed, result|
             { page_title: "Test" }
           end

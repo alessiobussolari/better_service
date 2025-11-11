@@ -30,7 +30,7 @@ module BetterService
       end
 
       # Service with presenter configured
-      class ServiceWithPresenter < Base
+      class ServiceWithPresenter < Services::Base
         presenter DummyPresenter
 
         search_with do
@@ -39,7 +39,7 @@ module BetterService
       end
 
       # Service with presenter options
-      class ServiceWithPresenterOptions < Base
+      class ServiceWithPresenterOptions < Services::Base
         presenter DummyPresenter
         presenter_options { { currency: "USD" } }
       end
@@ -63,7 +63,7 @@ module BetterService
       end
 
       test "_presenter_class defaults to nil" do
-        assert_nil Base._presenter_class
+        assert_nil Services::Base._presenter_class
       end
 
       test "presenter_options DSL stores options block" do
@@ -175,7 +175,7 @@ module BetterService
       # ========================================
 
       test "transform returns data unchanged when no presenter" do
-        service = Base.new(@user)
+        service = Services::Base.new(@user)
         data = { items: [{ name: "Item" }] }
 
         result = service.send(:transform, data)
@@ -193,7 +193,7 @@ module BetterService
       end
 
       test "custom transform_with block overrides automatic presentation" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           presenter DummyPresenter
 
           transform_with do |data|
@@ -208,7 +208,7 @@ module BetterService
       end
 
       test "presenter applied during full service call" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           presenter DummyPresenter
 
           search_with do
@@ -227,7 +227,7 @@ module BetterService
       end
 
       test "transform handles presenter initialization errors" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           presenter Class.new do
             def initialize(object, **options)
               raise ArgumentError, "Invalid object"
@@ -237,10 +237,13 @@ module BetterService
           search_with { { items: [{}] } }
         end.new(@user)
 
-        result = service.call
+        error = assert_raises(BetterService::Errors::Runtime::ExecutionError) do
+          service.call
+        end
 
-        refute result[:success]
-        assert_match(/error/i, result[:error])
+        assert_equal :execution_error, error.code
+        # Error message contains the wrapped exception message
+        assert_match(/wrong number of arguments|invalid object/i, error.message)
       end
 
       test "transform works with ActiveRecord-like objects" do
@@ -254,7 +257,7 @@ module BetterService
       end
 
       test "presenter_options evaluated in service context" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           presenter DummyPresenter
           presenter_options { { user_id: user.id } }
 

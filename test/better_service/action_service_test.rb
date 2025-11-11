@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require_relative "../../lib/better_service/action_service"
+require_relative "../../lib/better_service/services/action_service"
 
 module BetterService
   class ActionServiceTest < ActiveSupport::TestCase
@@ -22,11 +22,11 @@ module BetterService
     # ========================================
 
     test "ActionService default action_name is nil" do
-      assert_nil ActionService._action_name
+      assert_nil Services::ActionService._action_name
     end
 
     test "ActionService allows setting custom action_name" do
-      service_class = Class.new(ActionService) do
+      service_class = Class.new(Services::ActionService) do
         action_name :approved
 
         search_with do
@@ -52,14 +52,14 @@ module BetterService
     end
 
     test "ActionService supports multiple different actions" do
-      accept_service = Class.new(ActionService) do
+      accept_service = Class.new(Services::ActionService) do
         action_name :accepted
 
         search_with { { resource: { id: 1 } } }
         process_with { |data| { resource: data[:resource].merge(status: "accepted") } }
       end
 
-      reject_service = Class.new(ActionService) do
+      reject_service = Class.new(Services::ActionService) do
         action_name :rejected
 
         search_with { { resource: { id: 1 } } }
@@ -77,7 +77,7 @@ module BetterService
     end
 
     test "ActionService message defaults to action completed successfully" do
-      service_class = Class.new(ActionService) do
+      service_class = Class.new(Services::ActionService) do
         action_name :published
 
         search_with { { resource: { id: 1 } } }

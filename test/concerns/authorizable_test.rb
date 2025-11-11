@@ -4,7 +4,7 @@ require "test_helper"
 
 class AuthorizableTest < ActiveSupport::TestCase
   # Test service WITH authorization
-  class AuthorizedService < BetterService::Base
+  class AuthorizedService < BetterService::Services::Base
     self._allow_nil_user = true
 
     schema do
@@ -29,7 +29,7 @@ class AuthorizableTest < ActiveSupport::TestCase
   end
 
   # Test service WITHOUT authorization (should work normally)
-  class UnauthorizedService < BetterService::Base
+  class UnauthorizedService < BetterService::Services::Base
     self._allow_nil_user = true
 
     schema do
@@ -50,7 +50,7 @@ class AuthorizableTest < ActiveSupport::TestCase
   end
 
   # Test service with authorization that uses params
-  class ParamsBasedAuthService < BetterService::Base
+  class ParamsBasedAuthService < BetterService::Services::Base
     schema do
       required(:user_id).filled(:integer)
     end
@@ -73,7 +73,7 @@ class AuthorizableTest < ActiveSupport::TestCase
   end
 
   # Test service with authorization that checks resource ownership
-  class ResourceOwnershipService < BetterService::Base
+  class ResourceOwnershipService < BetterService::Services::Base
     schema do
       required(:id).filled(:integer)
     end
@@ -121,23 +121,26 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert_equal "processed", result[:result]
   end
 
-  # Test 2: Authorization fails - returns error_result
+  # Test 2: Authorization fails - raises AuthorizationError
   test "authorization fails when block returns false" do
     non_admin_user = MockUser.new(id: 2, admin: false)
-    result = AuthorizedService.new(non_admin_user, params: { action: "test" }).call
 
-    assert_not result[:success]
-    assert_includes result[:errors], "Not authorized to perform this action"
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      AuthorizedService.new(non_admin_user, params: { action: "test" }).call
+    end
+
+    assert_equal :unauthorized, error.code
+    assert_match(/not authorized/i, error.message)
   end
 
   # Test 3: Authorization fails with nil user
   test "authorization fails when user is nil" do
-    result = AuthorizedService.new(nil, params: { action: "test" }).call
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      AuthorizedService.new(nil, params: { action: "test" }).call
+    end
 
-    assert_not result[:success]
-    assert_includes result[:errors], "Not authorized to perform this action"
-    assert_equal :unauthorized, result[:code]
+    assert_equal :unauthorized, error.code
+    assert_match(/not authorized/i, error.message)
   end
 
   # Test 4: Service without authorization works normally
@@ -157,9 +160,10 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert result[:success]
 
     # Should fail because params[:user_id] doesn't match
-    result = ParamsBasedAuthService.new(user, params: { user_id: 99 }).call
-    assert_not result[:success]
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      ParamsBasedAuthService.new(user, params: { user_id: 99 }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 
   # Test 6: Authorization has access to user
@@ -185,7 +189,7 @@ class AuthorizableTest < ActiveSupport::TestCase
   test "authorization failure prevents search from executing" do
     search_executed = false
 
-    service_class = Class.new(BetterService::Base) do
+    service_class = Class.new(BetterService::Services::Base) do
       self._allow_nil_user = true
 
       schema { required(:action).filled(:string) }
@@ -208,9 +212,11 @@ class AuthorizableTest < ActiveSupport::TestCase
       end
     end
 
-    result = service_class.new(nil, params: { action: "test" }).call
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(nil, params: { action: "test" }).call
+    end
 
-    assert_not result[:success]
+    assert_equal :unauthorized, error.code
     assert_not search_executed, "Search should not execute when authorization fails"
   end
 
@@ -228,7 +234,7 @@ class AuthorizableTest < ActiveSupport::TestCase
       end
     end
 
-    service_class = Class.new(BetterService::Base) do
+    service_class = Class.new(BetterService::Services::Base) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -248,9 +254,10 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert result[:success]
 
     non_admin = MockUser.new(id: 2, admin: false)
-    result = service_class.new(non_admin, params: { id: 123 }).call
-    assert_not result[:success]
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(non_admin, params: { id: 123 }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 
   # Test 10: Authorization with CanCanCan-style ability
@@ -266,7 +273,7 @@ class AuthorizableTest < ActiveSupport::TestCase
       end
     end
 
-    service_class = Class.new(BetterService::Base) do
+    service_class = Class.new(BetterService::Services::Base) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -284,14 +291,15 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert result[:success]
 
     non_admin = MockUser.new(id: 2, admin: false)
-    result = service_class.new(non_admin, params: { id: 123 }).call
-    assert_not result[:success]
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(non_admin, params: { id: 123 }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 
   # Test 11: Authorization with custom logic
   test "authorization with completely custom logic" do
-    service_class = Class.new(BetterService::Base) do
+    service_class = Class.new(BetterService::Services::Base) do
       schema { required(:secret_key).filled(:string) }
 
       authorize_with do
@@ -310,14 +318,15 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert result[:success]
 
     # Should fail with wrong secret
-    result = service_class.new(user, params: { secret_key: "wrong" }).call
-    assert_not result[:success]
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(user, params: { secret_key: "wrong" }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 
   # Test 12: Authorization works with all service types
   test "authorization works with CreateService" do
-    service_class = Class.new(BetterService::CreateService) do
+    service_class = Class.new(BetterService::Services::CreateService) do
       schema { required(:name).filled(:string) }
 
       authorize_with do
@@ -334,13 +343,14 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert_equal :created, result[:metadata][:action]
 
     non_admin = MockUser.new(id: 2, admin: false)
-    result = service_class.new(non_admin, params: { name: "Test" }).call
-    assert_not result[:success]
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(non_admin, params: { name: "Test" }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 
   test "authorization works with UpdateService" do
-    service_class = Class.new(BetterService::UpdateService) do
+    service_class = Class.new(BetterService::Services::UpdateService) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -358,7 +368,7 @@ class AuthorizableTest < ActiveSupport::TestCase
   end
 
   test "authorization works with ActionService" do
-    service_class = Class.new(BetterService::ActionService) do
+    service_class = Class.new(BetterService::Services::ActionService) do
       action_name :publish
       schema { required(:id).filled(:integer) }
 

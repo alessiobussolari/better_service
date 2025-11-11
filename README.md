@@ -7,7 +7,7 @@
 [![Gem Version](https://badge.fury.io/rb/better_service.svg)](https://badge.fury.io/rb/better_service)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Examples](#-examples)
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Usage](#-usage) • [Error Handling](#%EF%B8%8F-error-handling) • [Examples](#-examples)
 
 </div>
 
@@ -21,8 +21,11 @@ BetterService is a comprehensive Service Objects framework for Rails that brings
 - ✅ **Mandatory Schema Validation**: Built-in [Dry::Schema](https://dry-rb.org/gems/dry-schema/) validation for all params
 - 🔄 **Transaction Support**: Automatic database transaction wrapping with rollback
 - 🔐 **Flexible Authorization**: `authorize_with` DSL that works with any auth system (Pundit, CanCanCan, custom)
+- ⚠️ **Rich Error Handling**: Pure Exception Pattern with hierarchical errors, rich context, and detailed debugging info
+- 💾 **Cache Management**: Built-in `CacheService` for invalidating cache by context, user, or globally with async support
 - 📊 **Metadata Tracking**: Automatic action metadata in all service responses
-- 🏗️ **Powerful Generators**: 7 generators for rapid scaffolding (scaffold, index, show, create, update, destroy, action)
+- 🔗 **Workflow Composition**: Chain multiple services into pipelines with conditional steps, rollback support, and lifecycle hooks
+- 🏗️ **Powerful Generators**: 8 generators for rapid scaffolding (scaffold, index, show, create, update, destroy, action, workflow)
 - 📦 **6 Service Types**: Specialized services for different use cases
 - 🎨 **DSL-Based**: Clean, expressive DSL with `search_with`, `process_with`, `authorize_with`, etc.
 
@@ -56,12 +59,12 @@ gem install better_service
 
 ```bash
 # Generate a complete CRUD scaffold
-rails generate better_service:scaffold Product
+rails generate serviceable:scaffold Product
 
 # Or generate individual services
-rails generate better_service:create Product
-rails generate better_service:update Product
-rails generate better_service:action Product publish
+rails generate serviceable:create Product
+rails generate serviceable:update Product
+rails generate serviceable:action Product publish
 ```
 
 ### 2. Use the Service
@@ -86,6 +89,29 @@ end
 
 ---
 
+## 📖 Documentation
+
+Comprehensive guides and examples are available in the `/docs` directory:
+
+### 🎓 Guides
+
+- **[Getting Started](docs/getting-started.md)** - Installation, core concepts, your first service
+- **[Service Types](docs/service-types.md)** - Deep dive into all 6 service types (Index, Show, Create, Update, Destroy, Action)
+- **[Concerns Reference](docs/concerns-reference.md)** - Complete reference for all 8 concerns (Validatable, Authorizable, Cacheable, etc.)
+
+### 💡 Examples
+
+- **[E-commerce](docs/examples/e-commerce.md)** - Complete e-commerce implementation (products, cart, checkout)
+
+### 🔧 Configuration
+
+See `config/initializers/better_service.rb` for all configuration options including:
+- Instrumentation & Observability
+- Built-in LogSubscriber and StatsSubscriber
+- Cache configuration
+
+---
+
 ## 📚 Usage
 
 ### Service Structure
@@ -93,7 +119,7 @@ end
 All services follow a 5-phase flow:
 
 ```ruby
-class Product::CreateService < BetterService::CreateService
+class Product::CreateService < BetterService::Services::CreateService
   # 1. Schema Validation (mandatory)
   schema do
     required(:name).filled(:string)
@@ -128,7 +154,7 @@ end
 #### 1. 📋 IndexService - List Resources
 
 ```ruby
-class Product::IndexService < BetterService::IndexService
+class Product::IndexService < BetterService::Services::IndexService
   schema do
     optional(:page).filled(:integer, gteq?: 1)
     optional(:search).maybe(:string)
@@ -159,7 +185,7 @@ products = result[:items]  # => Array of products
 #### 2. 👁️ ShowService - Show Single Resource
 
 ```ruby
-class Product::ShowService < BetterService::ShowService
+class Product::ShowService < BetterService::Services::ShowService
   schema do
     required(:id).filled(:integer)
   end
@@ -177,7 +203,7 @@ product = result[:resource]
 #### 3. ➕ CreateService - Create Resource
 
 ```ruby
-class Product::CreateService < BetterService::CreateService
+class Product::CreateService < BetterService::Services::CreateService
   # Transaction enabled by default ✅
 
   schema do
@@ -201,7 +227,7 @@ result = Product::CreateService.new(current_user, params: {
 #### 4. ✏️ UpdateService - Update Resource
 
 ```ruby
-class Product::UpdateService < BetterService::UpdateService
+class Product::UpdateService < BetterService::Services::UpdateService
   # Transaction enabled by default ✅
 
   schema do
@@ -229,7 +255,7 @@ end
 #### 5. ❌ DestroyService - Delete Resource
 
 ```ruby
-class Product::DestroyService < BetterService::DestroyService
+class Product::DestroyService < BetterService::Services::DestroyService
   # Transaction enabled by default ✅
 
   schema do
@@ -255,7 +281,7 @@ end
 #### 6. ⚡ ActionService - Custom Actions
 
 ```ruby
-class Product::PublishService < BetterService::ActionService
+class Product::PublishService < BetterService::Services::ActionService
   action_name :publish
 
   schema do
@@ -291,7 +317,7 @@ BetterService provides a flexible `authorize_with` DSL that works with **any** a
 ### Simple Role-Based Authorization
 
 ```ruby
-class Product::CreateService < BetterService::CreateService
+class Product::CreateService < BetterService::Services::CreateService
   authorize_with do
     user.admin?
   end
@@ -301,7 +327,7 @@ end
 ### Resource Ownership Check
 
 ```ruby
-class Product::UpdateService < BetterService::UpdateService
+class Product::UpdateService < BetterService::Services::UpdateService
   authorize_with do
     product = Product.find(params[:id])
     product.user_id == user.id
@@ -312,7 +338,7 @@ end
 ### Pundit Integration
 
 ```ruby
-class Product::UpdateService < BetterService::UpdateService
+class Product::UpdateService < BetterService::Services::UpdateService
   authorize_with do
     ProductPolicy.new(user, Product.find(params[:id])).update?
   end
@@ -322,7 +348,7 @@ end
 ### CanCanCan Integration
 
 ```ruby
-class Product::DestroyService < BetterService::DestroyService
+class Product::DestroyService < BetterService::Services::DestroyService
   authorize_with do
     Ability.new(user).can?(:destroy, :product)
   end
@@ -348,7 +374,7 @@ When authorization fails, the service returns:
 Create, Update, and Destroy services have **automatic transaction support** enabled by default:
 
 ```ruby
-class Product::CreateService < BetterService::CreateService
+class Product::CreateService < BetterService::Services::CreateService
   # Transactions enabled by default ✅
 
   process_with do |data|
@@ -366,7 +392,7 @@ end
 ### Disable Transactions
 
 ```ruby
-class Product::CreateService < BetterService::CreateService
+class Product::CreateService < BetterService::Services::CreateService
   with_transaction false  # Disable transactions
 
   # ...
@@ -412,16 +438,446 @@ end
 
 ---
 
+## ⚠️ Error Handling
+
+BetterService uses a **Pure Exception Pattern** where all errors raise exceptions with rich context information. This ensures consistent behavior across all environments (development, test, production).
+
+### Exception Hierarchy
+
+```
+BetterServiceError (base class)
+├── Configuration Errors (programming errors)
+│   ├── SchemaRequiredError - Missing schema definition
+│   ├── InvalidSchemaError - Invalid schema syntax
+│   ├── InvalidConfigurationError - Invalid config settings
+│   └── NilUserError - User is nil when required
+│
+├── Runtime Errors (execution errors)
+│   ├── ValidationError - Parameter validation failed
+│   ├── AuthorizationError - User not authorized
+│   ├── ResourceNotFoundError - Record not found
+│   ├── DatabaseError - Database operation failed
+│   ├── TransactionError - Transaction rollback
+│   └── ExecutionError - Unexpected error
+│
+└── Workflowable Errors (workflow errors)
+    ├── Configuration
+    │   ├── WorkflowConfigurationError - Invalid workflow config
+    │   ├── StepNotFoundError - Step not found
+    │   ├── InvalidStepError - Invalid step definition
+    │   └── DuplicateStepError - Duplicate step name
+    └── Runtime
+        ├── WorkflowExecutionError - Workflow execution failed
+        ├── StepExecutionError - Step failed
+        └── RollbackError - Rollback failed
+```
+
+### Handling Errors
+
+#### 1. Validation Errors
+
+Validation errors are raised during service **initialization** (not in `call`):
+
+```ruby
+begin
+  service = Product::CreateService.new(current_user, params: {
+    name: "",  # Invalid
+    price: -10  # Invalid
+  })
+rescue BetterService::Errors::Runtime::ValidationError => e
+  e.message  # => "Validation failed"
+  e.code     # => :validation_failed
+
+  # Access validation errors from context
+  e.context[:validation_errors]
+  # => {
+  #   name: ["must be filled"],
+  #   price: ["must be greater than 0"]
+  # }
+
+  # Render in controller
+  render json: {
+    error: e.message,
+    errors: e.context[:validation_errors]
+  }, status: :unprocessable_entity
+end
+```
+
+#### 2. Authorization Errors
+
+Authorization errors are raised during `call`:
+
+```ruby
+begin
+  Product::DestroyService.new(current_user, params: { id: 1 }).call
+rescue BetterService::Errors::Runtime::AuthorizationError => e
+  e.message  # => "Not authorized to perform this action"
+  e.code     # => :unauthorized
+  e.context[:service]  # => "Product::DestroyService"
+  e.context[:user]     # => user_id or "nil"
+
+  # Render in controller
+  render json: { error: e.message }, status: :forbidden
+end
+```
+
+#### 3. Resource Not Found Errors
+
+Raised when ActiveRecord records are not found:
+
+```ruby
+begin
+  Product::ShowService.new(current_user, params: { id: 99999 }).call
+rescue BetterService::Errors::Runtime::ResourceNotFoundError => e
+  e.message  # => "Resource not found: Couldn't find Product..."
+  e.code     # => :resource_not_found
+  e.original_error  # => ActiveRecord::RecordNotFound instance
+
+  # Render in controller
+  render json: { error: "Product not found" }, status: :not_found
+end
+```
+
+#### 4. Database Errors
+
+Raised for database constraint violations and record invalid errors:
+
+```ruby
+begin
+  Product::CreateService.new(current_user, params: {
+    name: "Duplicate",  # Unique constraint violation
+    sku: "INVALID"
+  }).call
+rescue BetterService::Errors::Runtime::DatabaseError => e
+  e.message  # => "Database error: Validation failed..."
+  e.code     # => :database_error
+  e.original_error  # => ActiveRecord::RecordInvalid instance
+
+  # Render in controller
+  render json: { error: e.message }, status: :unprocessable_entity
+end
+```
+
+#### 5. Workflow Errors
+
+Workflows raise specific errors for step and rollback failures:
+
+```ruby
+begin
+  OrderPurchaseWorkflow.new(current_user, params: params).call
+rescue BetterService::Errors::Workflowable::Runtime::StepExecutionError => e
+  e.message  # => "Step charge_payment failed: Payment declined"
+  e.code     # => :step_failed
+  e.context[:workflow]        # => "OrderPurchaseWorkflow"
+  e.context[:step]            # => :charge_payment
+  e.context[:steps_executed]  # => [:create_order]
+
+rescue BetterService::Errors::Workflowable::Runtime::RollbackError => e
+  e.message  # => "Rollback failed for step charge_payment: Refund failed"
+  e.code     # => :rollback_failed
+  e.context[:executed_steps]  # => [:create_order, :charge_payment]
+  # ⚠️ Rollback errors indicate potential data inconsistency
+end
+```
+
+### Error Information
+
+All `BetterServiceError` exceptions provide rich debugging information:
+
+```ruby
+begin
+  service.call
+rescue BetterService::BetterServiceError => e
+  # Basic info
+  e.message        # Human-readable error message
+  e.code           # Symbol code for programmatic handling
+  e.timestamp      # When the error occurred
+
+  # Context info
+  e.context        # Hash with service-specific context
+  # => { service: "MyService", params: {...}, validation_errors: {...} }
+
+  # Original error (if wrapping another exception)
+  e.original_error  # The original exception that was caught
+
+  # Structured hash for logging
+  e.to_h
+  # => {
+  #   error_class: "BetterService::Errors::Runtime::ValidationError",
+  #   message: "Validation failed",
+  #   code: :validation_failed,
+  #   timestamp: "2025-11-09T10:30:00Z",
+  #   context: { service: "MyService", validation_errors: {...} },
+  #   original_error: { class: "StandardError", message: "...", backtrace: [...] },
+  #   backtrace: [...]
+  # }
+
+  # Detailed message with all context
+  e.detailed_message
+  # => "Validation failed | Code: validation_failed | Context: {...} | Original: ..."
+
+  # Enhanced backtrace (includes original error backtrace)
+  e.backtrace
+  # => ["...", "--- Original Error Backtrace ---", "..."]
+end
+```
+
+### Controller Pattern
+
+Recommended pattern for handling errors in controllers:
+
+```ruby
+class ProductsController < ApplicationController
+  def create
+    result = Product::CreateService.new(current_user, params: product_params).call
+    render json: result, status: :created
+
+  rescue BetterService::Errors::Runtime::ValidationError => e
+    render json: {
+      error: e.message,
+      errors: e.context[:validation_errors]
+    }, status: :unprocessable_entity
+
+  rescue BetterService::Errors::Runtime::AuthorizationError => e
+    render json: { error: e.message }, status: :forbidden
+
+  rescue BetterService::Errors::Runtime::ResourceNotFoundError => e
+    render json: { error: "Resource not found" }, status: :not_found
+
+  rescue BetterService::Errors::Runtime::DatabaseError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+
+  rescue BetterService::BetterServiceError => e
+    # Catch-all for other service errors
+    Rails.logger.error("Service error: #{e.to_h}")
+    render json: { error: "An error occurred" }, status: :internal_server_error
+  end
+end
+```
+
+Or use a centralized error handler:
+
+```ruby
+class ApplicationController < ActionController::API
+  rescue_from BetterService::Errors::Runtime::ValidationError do |e|
+    render json: {
+      error: e.message,
+      errors: e.context[:validation_errors]
+    }, status: :unprocessable_entity
+  end
+
+  rescue_from BetterService::Errors::Runtime::AuthorizationError do |e|
+    render json: { error: e.message }, status: :forbidden
+  end
+
+  rescue_from BetterService::Errors::Runtime::ResourceNotFoundError do |e|
+    render json: { error: "Resource not found" }, status: :not_found
+  end
+
+  rescue_from BetterService::Errors::Runtime::DatabaseError do |e|
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  rescue_from BetterService::BetterServiceError do |e|
+    Rails.logger.error("Service error: #{e.to_h}")
+    render json: { error: "An error occurred" }, status: :internal_server_error
+  end
+end
+```
+
+---
+
+## 💾 Cache Management
+
+BetterService provides built-in cache management through the `BetterService::CacheService` module, which works seamlessly with services that use the `Cacheable` concern.
+
+### Cache Invalidation
+
+The CacheService provides several methods for cache invalidation:
+
+#### Invalidate for Specific User and Context
+
+```ruby
+# Invalidate cache for a specific user and context
+BetterService::CacheService.invalidate_for_context(current_user, "products")
+# Deletes all cache keys like: products_index:user_123:*:products
+
+# Invalidate asynchronously (requires ActiveJob)
+BetterService::CacheService.invalidate_for_context(current_user, "products", async: true)
+```
+
+#### Invalidate Globally for a Context
+
+```ruby
+# Invalidate cache for all users in a specific context
+BetterService::CacheService.invalidate_global("sidebar")
+# Deletes all cache keys matching: *:sidebar
+
+# Useful after updating global settings that affect all users
+BetterService::CacheService.invalidate_global("navigation", async: true)
+```
+
+#### Invalidate All Cache for a User
+
+```ruby
+# Invalidate all cached data for a specific user
+BetterService::CacheService.invalidate_for_user(current_user)
+# Deletes all cache keys matching: *:user_123:*
+
+# Useful when user permissions or roles change
+BetterService::CacheService.invalidate_for_user(user, async: true)
+```
+
+#### Invalidate Specific Key
+
+```ruby
+# Delete a single cache key
+BetterService::CacheService.invalidate_key("products_index:user_123:abc:products")
+```
+
+#### Clear All BetterService Cache
+
+```ruby
+# WARNING: Clears ALL BetterService cache
+# Use with caution, preferably only in development/testing
+BetterService::CacheService.clear_all
+```
+
+### Cache Utilities
+
+#### Fetch with Caching
+
+```ruby
+# Wrapper around Rails.cache.fetch
+result = BetterService::CacheService.fetch("my_key", expires_in: 1.hour) do
+  expensive_computation
+end
+```
+
+#### Check Cache Existence
+
+```ruby
+if BetterService::CacheService.exist?("my_key")
+  # Key exists in cache
+end
+```
+
+#### Get Cache Statistics
+
+```ruby
+stats = BetterService::CacheService.stats
+# => {
+#   cache_store: "ActiveSupport::Cache::RedisStore",
+#   supports_pattern_deletion: true,
+#   supports_async: true
+# }
+```
+
+### Integration with Services
+
+The CacheService automatically works with services using the `Cacheable` concern:
+
+```ruby
+class Product::IndexService < BetterService::IndexService
+  cache_key "products_index"
+  cache_ttl 1.hour
+  cache_contexts "products", "sidebar"
+
+  # Service implementation...
+end
+
+# After creating a product, invalidate the cache
+Product.create!(name: "New Product")
+BetterService::CacheService.invalidate_for_context(current_user, "products")
+
+# Or invalidate globally for all users
+BetterService::CacheService.invalidate_global("products")
+```
+
+### Use Cases
+
+#### After Model Updates
+
+```ruby
+class Product < ApplicationRecord
+  after_commit :invalidate_product_cache, on: [ :create, :update, :destroy ]
+
+  private
+
+  def invalidate_product_cache
+    # Invalidate for all users
+    BetterService::CacheService.invalidate_global("products")
+  end
+end
+```
+
+#### After User Permission Changes
+
+```ruby
+class User < ApplicationRecord
+  after_update :invalidate_user_cache, if: :saved_change_to_role?
+
+  private
+
+  def invalidate_user_cache
+    # Invalidate all cache for this user
+    BetterService::CacheService.invalidate_for_user(self)
+  end
+end
+```
+
+#### In Controllers
+
+```ruby
+class ProductsController < ApplicationController
+  def create
+    @product = Product.create!(product_params)
+
+    # Invalidate cache for the current user
+    BetterService::CacheService.invalidate_for_context(current_user, "products")
+
+    redirect_to @product
+  end
+end
+```
+
+### Async Cache Invalidation
+
+For better performance, use async invalidation with ActiveJob:
+
+```ruby
+# Queues a background job to invalidate cache
+BetterService::CacheService.invalidate_for_context(
+  current_user,
+  "products",
+  async: true
+)
+```
+
+**Note**: Async invalidation requires ActiveJob to be configured in your Rails application.
+
+### Cache Store Compatibility
+
+The CacheService works with any Rails cache store, but pattern-based deletion (`delete_matched`) requires:
+- MemoryStore ✅
+- RedisStore ✅
+- RedisCacheStore ✅
+- MemCachedStore ⚠️ (limited support)
+- NullStore ⚠️ (no-op)
+- FileStore ⚠️ (limited support)
+
+---
+
 ## 🏗️ Generators
 
-BetterService includes 7 powerful generators:
+BetterService includes 8 powerful generators:
 
 ### Scaffold Generator
 
 Generates all 5 CRUD services at once:
 
 ```bash
-rails generate better_service:scaffold Product
+rails generate serviceable:scaffold Product
 ```
 
 Creates:
@@ -435,22 +891,25 @@ Creates:
 
 ```bash
 # Index service
-rails generate better_service:index Product
+rails generate serviceable:index Product
 
 # Show service
-rails generate better_service:show Product
+rails generate serviceable:show Product
 
 # Create service
-rails generate better_service:create Product
+rails generate serviceable:create Product
 
 # Update service
-rails generate better_service:update Product
+rails generate serviceable:update Product
 
 # Destroy service
-rails generate better_service:destroy Product
+rails generate serviceable:destroy Product
 
 # Custom action service
-rails generate better_service:action Product publish
+rails generate serviceable:action Product publish
+
+# Workflow for composing services
+rails generate serviceable:workflow OrderPurchase --steps create_order charge_payment
 ```
 
 ---
@@ -530,6 +989,251 @@ end
 
 ---
 
+## 🔗 Workflows - Service Composition
+
+Workflows allow you to compose multiple services into a pipeline with explicit data mapping, conditional execution, automatic rollback, and lifecycle hooks.
+
+### Creating a Workflow
+
+Generate a workflow with the generator:
+
+```bash
+rails generate serviceable:workflow OrderPurchase --steps create_order charge_payment send_email
+```
+
+This creates `app/workflows/order_purchase_workflow.rb`:
+
+```ruby
+class OrderPurchaseWorkflow < BetterService::Workflow
+  # Enable database transactions for the entire workflow
+  with_transaction true
+
+  # Lifecycle hooks
+  before_workflow :validate_cart
+  after_workflow :clear_cart
+  around_step :log_step
+
+  # Step 1: Create order
+  step :create_order,
+       with: Order::CreateService,
+       input: ->(ctx) { { items: ctx.cart_items, total: ctx.total } }
+
+  # Step 2: Charge payment with rollback
+  step :charge_payment,
+       with: Payment::ChargeService,
+       input: ->(ctx) { { amount: ctx.order.total } },
+       rollback: ->(ctx) { Payment::RefundService.new(ctx.user, params: { charge_id: ctx.charge.id }).call }
+
+  # Step 3: Send email (optional, won't stop workflow if fails)
+  step :send_email,
+       with: Email::ConfirmationService,
+       input: ->(ctx) { { order_id: ctx.order.id } },
+       optional: true,
+       if: ->(ctx) { ctx.user.notifications_enabled? }
+
+  private
+
+  def validate_cart(context)
+    context.fail!("Cart is empty") if context.cart_items.empty?
+  end
+
+  def clear_cart(context)
+    context.user.clear_cart! if context.success?
+  end
+
+  def log_step(step, context)
+    Rails.logger.info "Executing: #{step.name}"
+    yield
+    Rails.logger.info "Completed: #{step.name}"
+  end
+end
+```
+
+### Using a Workflow
+
+```ruby
+# In your controller
+result = OrderPurchaseWorkflow.new(current_user, params: {
+  cart_items: [...],
+  payment_method: "card_123"
+}).call
+
+if result[:success]
+  # Access context data
+  order = result[:context].order
+  charge = result[:context].charge_payment
+
+  render json: {
+    order: order,
+    metadata: result[:metadata]
+  }, status: :created
+else
+  render json: {
+    errors: result[:errors],
+    failed_at: result[:metadata][:failed_step]
+  }, status: :unprocessable_entity
+end
+```
+
+### Workflow Features
+
+#### 1. **Explicit Input Mapping**
+
+Each step defines how data flows from the context to the service:
+
+```ruby
+step :charge_payment,
+     with: Payment::ChargeService,
+     input: ->(ctx) {
+       {
+         amount: ctx.order.total,
+         currency: ctx.order.currency,
+         payment_method: ctx.payment_method
+       }
+     }
+```
+
+#### 2. **Conditional Steps**
+
+Steps can execute conditionally:
+
+```ruby
+step :send_sms,
+     with: SMS::NotificationService,
+     input: ->(ctx) { { order_id: ctx.order.id } },
+     if: ->(ctx) { ctx.user.sms_enabled? && ctx.order.total > 100 }
+```
+
+#### 3. **Optional Steps**
+
+Optional steps won't stop the workflow if they fail:
+
+```ruby
+step :update_analytics,
+     with: Analytics::TrackService,
+     input: ->(ctx) { { event: 'order_created', order_id: ctx.order.id } },
+     optional: true  # Won't fail workflow if analytics service is down
+```
+
+#### 4. **Automatic Rollback**
+
+Define rollback logic for each step:
+
+```ruby
+step :charge_payment,
+     with: Payment::ChargeService,
+     input: ->(ctx) { { amount: ctx.order.total } },
+     rollback: ->(ctx) {
+       # Automatically called if a later step fails
+       Stripe::Refund.create(charge: ctx.charge_payment.id)
+     }
+```
+
+When a step fails, all previously executed steps' rollback blocks are called in reverse order.
+
+#### 5. **Transaction Support**
+
+Wrap the entire workflow in a database transaction:
+
+```ruby
+class MyWorkflow < BetterService::Workflow
+  with_transaction true  # DB changes are rolled back if workflow fails
+end
+```
+
+#### 6. **Lifecycle Hooks**
+
+**before_workflow**: Runs before any step executes
+
+```ruby
+before_workflow :validate_prerequisites
+
+def validate_prerequisites(context)
+  context.fail!("User not verified") unless context.user.verified?
+end
+```
+
+**after_workflow**: Runs after all steps complete (success or failure)
+
+```ruby
+after_workflow :log_completion
+
+def log_completion(context)
+  Rails.logger.info "Workflow completed: success=#{context.success?}"
+end
+```
+
+**around_step**: Wraps each step execution
+
+```ruby
+around_step :measure_performance
+
+def measure_performance(step, context)
+  start = Time.current
+  yield  # Execute the step
+  duration = Time.current - start
+  Rails.logger.info "Step #{step.name}: #{duration}s"
+end
+```
+
+### Workflow Response
+
+Workflows return a standardized response:
+
+```ruby
+{
+  success: true/false,
+  message: "Workflow completed successfully",
+  context: <Context object with all data>,
+  metadata: {
+    workflow: "OrderPurchaseWorkflow",
+    steps_executed: [:create_order, :charge_payment, :send_email],
+    steps_skipped: [],
+    failed_step: nil,  # :step_name if failed
+    duration_ms: 245.67
+  }
+}
+```
+
+### Context Object
+
+The context object stores all workflow data and is accessible across all steps:
+
+```ruby
+# Set data
+context.order = Order.create!(...)
+context.add(:custom_key, value)
+
+# Get data
+order = context.order
+value = context.get(:custom_key)
+
+# Check status
+context.success?  # => true
+context.failure?  # => false
+
+# Fail manually
+context.fail!("Custom error message", field: "error detail")
+```
+
+### Generator Options
+
+```bash
+# Basic workflow
+rails generate serviceable:workflow OrderPurchase
+
+# With steps
+rails generate serviceable:workflow OrderPurchase --steps create charge notify
+
+# With transaction enabled
+rails generate serviceable:workflow OrderPurchase --transaction
+
+# Skip test file
+rails generate serviceable:workflow OrderPurchase --skip-test
+```
+
+---
+
 ## 🧪 Testing
 
 BetterService includes comprehensive test coverage. Run tests with:
@@ -570,6 +1274,35 @@ Please make sure to:
 - Add tests for new features
 - Update documentation
 - Follow the existing code style
+
+---
+
+## 🎉 Recent Features
+
+### Observability & Instrumentation ✨
+
+BetterService now includes comprehensive instrumentation powered by ActiveSupport::Notifications:
+
+- **Automatic Event Publishing**: `service.started`, `service.completed`, `service.failed`, `cache.hit`, `cache.miss`
+- **Built-in Subscribers**: LogSubscriber and StatsSubscriber for monitoring
+- **Easy Integration**: DataDog, New Relic, Grafana, and custom subscribers
+- **Zero Configuration**: Works out of the box, fully configurable
+
+```ruby
+# Enable monitoring in config/initializers/better_service.rb
+BetterService.configure do |config|
+  config.instrumentation_enabled = true
+  config.log_subscriber_enabled = true
+  config.stats_subscriber_enabled = true
+end
+
+# Custom subscriber
+ActiveSupport::Notifications.subscribe("service.completed") do |name, start, finish, id, payload|
+  DataDog.histogram("service.duration", payload[:duration])
+end
+```
+
+See [Configuration](docs/getting-started.md#configuration) for more details.
 
 ---
 

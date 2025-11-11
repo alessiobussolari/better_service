@@ -16,7 +16,7 @@ module BetterService
       end
 
       # Service with schema validation
-      class ValidatedService < Base
+      class ValidatedService < Services::Base
         schema do
           required(:name).filled(:string)
           required(:age).filled(:integer)
@@ -25,14 +25,14 @@ module BetterService
       end
 
       # Service with custom validation rules
-      class PagedService < Base
+      class PagedService < Services::Base
         schema do
           required(:page).filled(:integer, gteq?: 1)
         end
       end
 
       # Service with email format validation
-      class EmailService < Base
+      class EmailService < Services::Base
         schema do
           required(:email).filled(:string, format?: /@/)
         end
@@ -58,8 +58,8 @@ module BetterService
       end
 
       test "Base has default empty schema" do
-        assert_not_nil Base._schema
-        assert_instance_of Dry::Schema::Params, Base._schema
+        assert_not_nil Services::Base._schema
+        assert_instance_of Dry::Schema::Params, Services::Base._schema
       end
 
       # ========================================
@@ -73,19 +73,21 @@ module BetterService
         assert_empty service.validation_errors
       end
 
-      test "catches validation errors for invalid params" do
-        service = ValidatedService.new(@user, params: { name: "", age: "not_number" })
+      test "raises ValidationError for invalid params during initialize" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "", age: "not_number" })
+        end
 
-        refute service.valid?
-        assert service.validation_errors.key?(:name)
-        assert service.validation_errors.key?(:age)
+        assert error.context[:validation_errors].key?(:name)
+        assert error.context[:validation_errors].key?(:age)
       end
 
-      test "validation fails when required field missing" do
-        service = ValidatedService.new(@user, params: { age: 30 })
+      test "raises ValidationError when required field missing" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { age: 30 })
+        end
 
-        refute service.valid?
-        assert service.validation_errors.key?(:name)
+        assert error.context[:validation_errors].key?(:name)
       end
 
       test "validation passes when optional field omitted" do
@@ -94,43 +96,50 @@ module BetterService
         assert service.valid?
       end
 
-      test "validation catches type mismatches" do
-        service = ValidatedService.new(@user, params: { name: "John", age: "twenty" })
+      test "raises ValidationError for type mismatches" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "John", age: "twenty" })
+        end
 
-        refute service.valid?
-        assert service.validation_errors.key?(:age)
+        assert error.context[:validation_errors].key?(:age)
       end
 
-      test "validation respects custom rules (gteq?)" do
-        service = PagedService.new(@user, params: { page: 0 })
+      test "raises ValidationError when custom rules fail" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          PagedService.new(@user, params: { page: 0 })
+        end
 
-        refute service.valid?
-        assert service.validation_errors.key?(:page)
+        assert error.context[:validation_errors].key?(:page)
       end
 
       # ========================================
       # Test Group 3: Error Formatting
       # ========================================
 
-      test "validation errors formatted as arrays" do
-        service = ValidatedService.new(@user, params: { name: "", age: "bad" })
+      test "validation errors formatted as arrays in exception context" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "", age: "bad" })
+        end
 
-        service.validation_errors.each_value do |messages|
+        error.context[:validation_errors].each_value do |messages|
           assert messages.is_a?(Array)
         end
       end
 
       test "multiple errors for same field collected in array" do
-        service = EmailService.new(@user, params: { email: "" })
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          EmailService.new(@user, params: { email: "" })
+        end
 
-        refute service.valid?
-        assert service.validation_errors[:email].is_a?(Array)
+        assert error.context[:validation_errors][:email].is_a?(Array)
       end
 
-      test "validation errors have correct structure" do
-        service = ValidatedService.new(@user, params: { name: "" })
+      test "validation errors have correct structure in exception context" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "" })
+        end
 
-        errors = service.validation_errors
+        errors = error.context[:validation_errors]
         assert errors.is_a?(Hash)
         assert errors[:name].is_a?(Array)
         assert errors[:name].all? { |e| e.is_a?(String) }
@@ -146,19 +155,20 @@ module BetterService
       # Test Group 4: Integration with Call Flow
       # ========================================
 
-      test "call returns failure result when validation fails" do
-        service = ValidatedService.new(@user, params: { name: "" })
-        result = service.call
+      test "initialize raises ValidationError when validation fails" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "" })
+        end
 
-        refute result[:success]
-        assert_match(/validation failed/i, result[:error])
-        assert result[:errors].is_a?(Hash)
+        assert_equal :validation_failed, error.code
+        assert error.context[:validation_errors].is_a?(Hash)
+        assert error.context[:validation_errors].key?(:name)
       end
 
       test "search phase not executed when validation fails" do
         search_called = false
 
-        service = Class.new(Base) do
+        service_class = Class.new(Services::Base) do
           schema do
             required(:id).filled(:string)
           end
@@ -167,18 +177,20 @@ module BetterService
             search_called = true
             raise "Should not be called"
           end
-        end.new(@user, params: {})
+        end
 
-        result = service.call
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          service_class.new(@user, params: {})
+        end
 
-        refute result[:success]
+        assert_equal :validation_failed, error.code
         refute search_called
       end
 
       test "validation happens before search phase" do
         executed_phases = []
 
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           schema do
             required(:name).filled(:string)
           end
@@ -194,16 +206,17 @@ module BetterService
         assert_includes executed_phases, :search
       end
 
-      test "validation errors included in failure result" do
-        service = ValidatedService.new(@user, params: { name: "", age: "bad" })
-        result = service.call
+      test "validation errors included in exception context" do
+        error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+          ValidatedService.new(@user, params: { name: "", age: "bad" })
+        end
 
-        assert result[:errors].key?(:name)
-        assert result[:errors].key?(:age)
+        assert error.context[:validation_errors].key?(:name)
+        assert error.context[:validation_errors].key?(:age)
       end
 
       test "no validation performed when schema not defined" do
-        service = Base.new(@user, params: { anything: "goes" })
+        service = Services::Base.new(@user, params: { anything: "goes" })
 
         assert service.valid?
         result = service.call

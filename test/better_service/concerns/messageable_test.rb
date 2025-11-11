@@ -16,12 +16,12 @@ module BetterService
       end
 
       # Service without namespace
-      class BaseServiceWithoutNamespace < Base
+      class BaseServiceWithoutNamespace < Services::Base
         self._allow_nil_user = true
       end
 
       # Service with namespace configured
-      class BookingService < Base
+      class BookingService < Services::Base
         messages_namespace :bookings
 
         search_with do
@@ -102,7 +102,7 @@ module BetterService
       # ========================================
 
       test "message works in search phase" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           messages_namespace :bookings
 
           search_with do
@@ -118,7 +118,7 @@ module BetterService
       end
 
       test "message works in respond phase" do
-        service = Class.new(Base) do
+        service = Class.new(Services::Base) do
           messages_namespace :bookings
 
           respond_with do |data|

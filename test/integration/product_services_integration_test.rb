@@ -31,13 +31,15 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
   end
 
   test "create service - validation failure with invalid params" do
-    result = Product::CreateService.new(@user, params: {
-      name: "",
-      price: -10
-    }).call
+    error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
+      Product::CreateService.new(@user, params: {
+        name: "",
+        price: -10
+      })
+    end
 
-    assert_not result[:success], "Create should fail with invalid params"
-    assert result[:errors].present?
+    assert_equal :validation_failed, error.code
+    assert error.context[:validation_errors].present?
   end
 
   test "create service - transaction rollback on database error" do
@@ -99,9 +101,11 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
   end
 
   test "show service - fails with invalid id" do
-    result = Product::ShowService.new(@user, params: { id: 99999 }).call
+    error = assert_raises(BetterService::Errors::Runtime::ResourceNotFoundError) do
+      Product::ShowService.new(@user, params: { id: 99999 }).call
+    end
 
-    assert_not result[:success]
+    assert_equal :resource_not_found, error.code
   end
 
   # ====================
@@ -127,15 +131,18 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
   test "update service - transaction rollback on error" do
     product = Product.create!(name: "Original", price: 50, user: @user)
 
-    # Try to update with invalid data
-    result = Product::UpdateService.new(@user, params: {
-      id: product.id,
-      name: "",  # Invalid: empty name
-      price: -10  # Invalid: negative price
-    }).call
+    # Try to update with invalid data - should raise during transaction
+    error = assert_raises(BetterService::Errors::Runtime::DatabaseError) do
+      Product::UpdateService.new(@user, params: {
+        id: product.id,
+        name: "",  # Invalid: empty name
+        price: -10  # Invalid: negative price
+      }).call
+    end
 
+    assert_equal :database_error, error.code
     product.reload
-    # Product should remain unchanged due to validation or transaction rollback
+    # Product should remain unchanged due to transaction rollback
     assert_equal "Original", product.name
     assert_equal 50, product.price.to_f
   end
@@ -213,7 +220,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
 
   test "authorization - service with authorization check passes when authorized" do
     # Create a service with authorization
-    service_class = Class.new(BetterService::UpdateService) do
+    service_class = Class.new(BetterService::Services::UpdateService) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -241,7 +248,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
 
   test "authorization - service with authorization check fails when not authorized" do
     # Create a service with authorization that fails
-    service_class = Class.new(BetterService::UpdateService) do
+    service_class = Class.new(BetterService::Services::UpdateService) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -260,11 +267,13 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     end
 
     product = Product.create!(name: "Original", price: 50, user: @user)
-    result = service_class.new(@user, params: { id: product.id }).call
 
-    assert_not result[:success], "Should fail when not authorized"
-    assert_equal :unauthorized, result[:code]
-    assert_includes result[:errors], "Not authorized to perform this action"
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(@user, params: { id: product.id }).call
+    end
+
+    assert_equal :unauthorized, error.code
+    assert_match(/not authorized/i, error.message)
 
     # Verify product was NOT updated
     product.reload
@@ -275,7 +284,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     search_executed = false
 
     # Create a service that tracks if search was executed
-    service_class = Class.new(BetterService::UpdateService) do
+    service_class = Class.new(BetterService::Services::UpdateService) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -296,9 +305,12 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     end
 
     product = Product.create!(name: "Test", price: 50, user: @user)
-    result = service_class.new(@user, params: { id: product.id }).call
 
-    assert_not result[:success]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(@user, params: { id: product.id }).call
+    end
+
+    assert_equal :unauthorized, error.code
     assert_not search_executed, "Search should NOT execute when authorization fails (fail fast)"
   end
 
@@ -307,7 +319,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     product = Product.create!(name: "Owner Product", price: 50, user: @user)
 
     # Service that checks resource ownership
-    service_class = Class.new(BetterService::UpdateService) do
+    service_class = Class.new(BetterService::Services::UpdateService) do
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -330,8 +342,9 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     assert result[:success], "Owner should be authorized"
 
     # Other user should fail
-    result = service_class.new(other_user, params: { id: product.id }).call
-    assert_not result[:success], "Non-owner should not be authorized"
-    assert_equal :unauthorized, result[:code]
+    error = assert_raises(BetterService::Errors::Runtime::AuthorizationError) do
+      service_class.new(other_user, params: { id: product.id }).call
+    end
+    assert_equal :unauthorized, error.code
   end
 end

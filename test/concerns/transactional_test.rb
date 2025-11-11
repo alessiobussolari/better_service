@@ -7,7 +7,7 @@ class TransactionalTest < ActiveSupport::TestCase
     self.table_name = "test_models"
   end
 
-  class TransactionalService < BetterService::Base
+  class TransactionalService < BetterService::Services::Base
     self._allow_nil_user = true
     with_transaction true
 
@@ -21,7 +21,7 @@ class TransactionalTest < ActiveSupport::TestCase
     end
   end
 
-  class NonTransactionalService < BetterService::Base
+  class NonTransactionalService < BetterService::Services::Base
     self._allow_nil_user = true
     with_transaction false
 
@@ -35,7 +35,7 @@ class TransactionalTest < ActiveSupport::TestCase
     end
   end
 
-  class FailingTransactionalService < BetterService::Base
+  class FailingTransactionalService < BetterService::Services::Base
     self._allow_nil_user = true
     with_transaction true
 
@@ -44,7 +44,7 @@ class TransactionalTest < ActiveSupport::TestCase
     end
 
     process_with do
-      model = TestModel.create!(name: params[:name])
+      TestModel.create!(name: params[:name])
       raise StandardError, "Intentional failure"
     end
   end
@@ -89,16 +89,18 @@ class TransactionalTest < ActiveSupport::TestCase
   test "transaction rolls back on exception" do
     initial_count = TestModel.count
 
-    result = FailingTransactionalService.new(nil, params: { name: "Test" }).call
+    error = assert_raises(BetterService::Errors::Runtime::ExecutionError) do
+      FailingTransactionalService.new(nil, params: { name: "Test" }).call
+    end
 
-    # Service should handle error and return failure
-    assert_not result[:success]
+    # Error should be raised with proper code
+    assert_equal :execution_error, error.code
     # Database should be unchanged (transaction rolled back)
     assert_equal initial_count, TestModel.count
   end
 
   test "non-transactional service does not rollback on exception" do
-    class FailingNonTransactionalService < BetterService::Base
+    class FailingNonTransactionalService < BetterService::Services::Base
       self._allow_nil_user = true
       with_transaction false
 
@@ -107,17 +109,19 @@ class TransactionalTest < ActiveSupport::TestCase
       end
 
       process_with do
-        model = TestModel.create!(name: params[:name])
+        TestModel.create!(name: params[:name])
         raise StandardError, "Intentional failure"
       end
     end
 
     initial_count = TestModel.count
 
-    result = FailingNonTransactionalService.new(nil, params: { name: "Test" }).call
+    error = assert_raises(BetterService::Errors::Runtime::ExecutionError) do
+      FailingNonTransactionalService.new(nil, params: { name: "Test" }).call
+    end
 
-    # Service should handle error and return failure
-    assert_not result[:success]
+    # Error should be raised with proper code
+    assert_equal :execution_error, error.code
     # Record should still be created (no transaction, no rollback)
     assert_equal initial_count + 1, TestModel.count
   end
@@ -131,7 +135,7 @@ class TransactionalTest < ActiveSupport::TestCase
   end
 
   test "child class can override parent transaction setting" do
-    class ParentService < BetterService::Base
+    class ParentService < BetterService::Services::Base
       with_transaction true
 
       schema do

@@ -1,0 +1,27 @@
+===============================================================================
+
+Workflow has been generated!
+
+Next steps:
+
+1. Define your workflow steps in the generated file
+2. Create the service classes referenced in each step
+3. Implement the input mapping for each step to pass data between services
+4. Add any lifecycle hooks (before_workflow, after_workflow, around_step)
+5. Configure transaction support if needed with: with_transaction true
+
+Usage example:
+
+  result = YourWorkflow.new(current_user, params: { ... }).call
+
+  if result[:success]
+    # Access context data
+    resource = result[:context].resource_name
+  else
+    # Handle errors
+    errors = result[:errors]
+  end
+
+For more information, see the BetterService documentation.
+
+===============================================================================

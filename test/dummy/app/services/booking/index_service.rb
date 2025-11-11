@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Booking
-  class IndexService < BetterService::IndexService
+  class IndexService < BetterService::Services::IndexService
     # Schema validation for params
     schema do
       optional(:page).filled(:integer, gteq?: 1)

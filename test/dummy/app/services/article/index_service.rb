@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Article::IndexService < BetterService::IndexService
+class Article::IndexService < BetterService::Services::IndexService
   # Schema for validating params
   schema do
     optional(:page).filled(:integer, gteq?: 1)

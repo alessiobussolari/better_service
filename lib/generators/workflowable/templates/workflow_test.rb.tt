@@ -1,0 +1,62 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+<% module_namespacing do -%>
+class <%= workflow_class_name %>Test < ActiveSupport::TestCase
+  # Setup test data
+  setup do
+    @user = users(:one) # Adjust based on your fixtures
+  end
+
+  test "workflow executes successfully with valid params" do
+    params = {
+      # Add your test params here
+    }
+
+    result = <%= workflow_class_name %>.new(@user, params: params).call
+
+    assert result[:success], "Expected workflow to succeed"
+    assert_instance_of BetterService::Workflowable::Context, result[:context]
+    assert_equal "<%= workflow_class_name %>", result[:metadata][:workflow]
+  end
+
+  test "workflow fails with invalid params" do
+    params = {
+      # Add invalid params here
+    }
+
+    result = <%= workflow_class_name %>.new(@user, params: params).call
+
+    assert_not result[:success], "Expected workflow to fail"
+    assert result[:errors].present?
+  end
+
+  test "workflow tracks executed steps" do
+    params = {
+      # Add your test params here
+    }
+
+    result = <%= workflow_class_name %>.new(@user, params: params).call
+
+    assert result[:metadata][:steps_executed].is_a?(Array)
+<% if workflow_steps.any? -%>
+    # Verify expected steps were executed
+<% workflow_steps.each do |step_name| -%>
+    # assert_includes result[:metadata][:steps_executed], :<%= step_name %>
+<% end -%>
+<% end -%>
+  end
+
+<% if use_transaction -%>
+  test "workflow rolls back database changes on failure" do
+    # Test that database changes are rolled back when workflow fails
+    # Example:
+    # assert_no_difference "<%= class_name %>.count" do
+    #   result = <%= workflow_class_name %>.new(@user, params: invalid_params).call
+    #   assert_not result[:success]
+    # end
+  end
+<% end -%>
+end
+<% end -%>

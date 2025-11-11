@@ -1,0 +1,72 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+class <%= workflow_class_name %> < BetterService::Workflow
+<% if use_transaction -%>
+  # Enable database transactions for the entire workflow
+  with_transaction true
+<% else -%>
+  # Database transactions are DISABLED by default
+  # To enable: with_transaction true
+<% end -%>
+
+  # Lifecycle hooks (optional)
+  # before_workflow :validate_prerequisites
+  # after_workflow :cleanup_resources
+  # around_step :log_step_execution
+
+<% if workflow_steps.any? -%>
+  # Define workflow steps
+<% workflow_steps.each do |step_name| -%>
+  step :<%= step_name %>,
+       with: <%= class_name %>::<%= step_name.to_s.camelize %>Service,
+       input: ->(ctx) {
+         # Map context data to service params
+         # Example: { resource_id: ctx.resource.id, amount: ctx.amount }
+         {}
+       }
+       # Optional configuration:
+       # optional: true  # Step won't stop workflow if it fails
+       # if: ->(ctx) { ctx.some_condition? }  # Conditional execution
+       # rollback: ->(ctx) { ctx.resource.destroy! }  # Rollback logic
+
+<% end -%>
+<% else -%>
+  # Example step configuration:
+  #
+  # step :create_resource,
+  #      with: <%= class_name %>::CreateService,
+  #      input: ->(ctx) { { name: ctx.resource_name, user_id: ctx.user.id } }
+  #
+  # step :process_payment,
+  #      with: Payment::ChargeService,
+  #      input: ->(ctx) { { amount: ctx.resource.total, payment_method: ctx.payment_method } },
+  #      rollback: ->(ctx) { Payment::RefundService.new(ctx.user, params: { charge_id: ctx.charge.id }).call }
+  #
+  # step :send_notification,
+  #      with: Email::NotificationService,
+  #      input: ->(ctx) { { resource_id: ctx.resource.id } },
+  #      optional: true,
+  #      if: ->(ctx) { ctx.user.notifications_enabled? }
+
+<% end -%>
+  private
+
+  # Example lifecycle hooks:
+  #
+  # def validate_prerequisites(context)
+  #   context.fail!("Prerequisites not met") unless some_condition
+  # end
+  #
+  # def cleanup_resources(context)
+  #   # Clean up only on success
+  #   context.user.clear_cache! if context.success?
+  # end
+  #
+  # def log_step_execution(step, context)
+  #   Rails.logger.info "Executing step: #{step.name}"
+  #   yield  # Execute the step
+  #   Rails.logger.info "Completed step: #{step.name}"
+  # end
+end
+<% end -%>

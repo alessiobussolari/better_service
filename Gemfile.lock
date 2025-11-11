@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    better_service (0.1.0)
+    better_service (1.0.0)
       dry-schema (~> 1.13)
       rails (>= 8.1.1)
 
