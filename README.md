@@ -95,9 +95,9 @@ Comprehensive guides and examples are available in the `/docs` directory:
 
 ### 🎓 Guides
 
-- **[Getting Started](docs/getting-started.md)** - Installation, core concepts, your first service
-- **[Service Types](docs/service-types.md)** - Deep dive into all 6 service types (Index, Show, Create, Update, Destroy, Action)
-- **[Concerns Reference](docs/concerns-reference.md)** - Complete reference for all 8 concerns (Validatable, Authorizable, Cacheable, etc.)
+- **[Getting Started](docs/start/getting-started.md)** - Installation, core concepts, your first service
+- **[Service Types](docs/services/01_services_structure.md)** - Deep dive into all 6 service types (Index, Show, Create, Update, Destroy, Action)
+- **[Concerns Reference](docs/concerns-reference.md)** - Complete reference for all 7 concerns (Validatable, Authorizable, Cacheable, etc.)
 
 ### 💡 Examples
 
@@ -105,7 +105,7 @@ Comprehensive guides and examples are available in the `/docs` directory:
 
 ### 🔧 Configuration
 
-See `config/initializers/better_service.rb` for all configuration options including:
+See **[Configuration Guide](docs/start/configuration.md)** for all options including:
 - Instrumentation & Observability
 - Built-in LogSubscriber and StatsSubscriber
 - Cache configuration
@@ -1302,7 +1302,7 @@ ActiveSupport::Notifications.subscribe("service.completed") do |name, start, fin
 end
 ```
 
-See [Configuration](docs/getting-started.md#configuration) for more details.
+See [Configuration Guide](docs/start/configuration.md) for more details.
 
 ---
 

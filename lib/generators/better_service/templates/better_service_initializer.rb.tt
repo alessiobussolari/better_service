@@ -1,0 +1,90 @@
+# frozen_string_literal: true
+
+# BetterService Configuration
+#
+# This file contains all available configuration options for BetterService.
+# Uncomment and modify the options you want to change from their defaults.
+#
+# For detailed documentation, see: docs/start/configuration.md
+
+BetterService.configure do |config|
+  # === Instrumentation Settings ===
+  #
+  # Enable/disable ActiveSupport::Notifications instrumentation globally.
+  # When disabled, no events will be published for any service.
+  #
+  # Default: true
+  # config.instrumentation_enabled = true
+
+  # Include service arguments in event payloads.
+  # Disable if arguments contain sensitive data (passwords, tokens, etc.)
+  #
+  # Default: true
+  # config.instrumentation_include_args = true
+
+  # Include service result in event payloads.
+  # Disable to reduce payload size or protect sensitive return values.
+  #
+  # Default: false
+  # config.instrumentation_include_result = false
+
+  # List of service class names to exclude from instrumentation.
+  # Useful for high-frequency services that would generate too many events.
+  #
+  # Default: []
+  # config.instrumentation_excluded_services = ["HealthCheckService", "MetricsService"]
+
+  # === Built-in Subscribers ===
+  #
+  # Enable the built-in log subscriber.
+  # When enabled, all service events are logged to Rails.logger.
+  #
+  # Default: false
+  # config.log_subscriber_enabled = true
+
+  # Log level for the built-in log subscriber.
+  # Valid values: :debug, :info, :warn, :error
+  #
+  # Default: :info
+  # config.log_subscriber_level = :info
+
+  # Enable the built-in stats subscriber.
+  # When enabled, statistics are collected for all service executions.
+  # Access stats with: BetterService::Subscribers::StatsSubscriber.stats
+  #
+  # Default: false
+  # config.stats_subscriber_enabled = true
+end
+
+# === Custom Subscribers ===
+#
+# You can subscribe to BetterService events for custom integrations:
+#
+# # DataDog integration
+# ActiveSupport::Notifications.subscribe("service.completed") do |name, start, finish, id, payload|
+#   duration_ms = payload[:duration]
+#   service_name = payload[:service]
+#
+#   StatsD.increment("better_service.calls", tags: ["service:#{service_name}"])
+#   StatsD.histogram("better_service.duration", duration_ms, tags: ["service:#{service_name}"])
+# end
+#
+# # New Relic integration
+# ActiveSupport::Notifications.subscribe("service.failed") do |name, start, finish, id, payload|
+#   NewRelic::Agent.notice_error(
+#     payload[:error],
+#     custom_params: {
+#       service: payload[:service],
+#       duration: payload[:duration]
+#     }
+#   )
+# end
+#
+# Available events:
+# - service.started     - Service execution started
+# - service.completed   - Service completed successfully
+# - service.failed      - Service raised an exception
+# - cache.hit           - Cache hit for cacheable service
+# - cache.miss          - Cache miss for cacheable service
+#
+# See docs/advanced/instrumentation.md for detailed event payloads and examples.
