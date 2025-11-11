@@ -23,9 +23,12 @@ BetterService is a comprehensive Service Objects framework for Rails that brings
 - 🔐 **Flexible Authorization**: `authorize_with` DSL that works with any auth system (Pundit, CanCanCan, custom)
 - ⚠️ **Rich Error Handling**: Pure Exception Pattern with hierarchical errors, rich context, and detailed debugging info
 - 💾 **Cache Management**: Built-in `CacheService` for invalidating cache by context, user, or globally with async support
+- 🔄 **Auto-Invalidation**: Write operations (Create/Update/Destroy) automatically invalidate cache when configured
+- 🌍 **I18n Support**: Built-in internationalization with `message()` helper, custom namespaces, and fallback chain
+- 🎨 **Presenter System**: Optional data transformation layer with `BetterService::Presenter` base class
 - 📊 **Metadata Tracking**: Automatic action metadata in all service responses
 - 🔗 **Workflow Composition**: Chain multiple services into pipelines with conditional steps, rollback support, and lifecycle hooks
-- 🏗️ **Powerful Generators**: 8 generators for rapid scaffolding (scaffold, index, show, create, update, destroy, action, workflow)
+- 🏗️ **Powerful Generators**: 10 generators for rapid scaffolding (scaffold, CRUD services, action, workflow, locale, presenter)
 - 📦 **6 Service Types**: Specialized services for different use cases
 - 🎨 **DSL-Based**: Clean, expressive DSL with `search_with`, `process_with`, `authorize_with`, etc.
 
@@ -868,9 +871,241 @@ The CacheService works with any Rails cache store, but pattern-based deletion (`
 
 ---
 
+## 🔄 Auto-Invalidation Cache
+
+Write operations (Create/Update/Destroy) can automatically invalidate cache after successful execution.
+
+### How It Works
+
+Auto-invalidation is **enabled by default** for Create, Update, and Destroy services when cache contexts are defined:
+
+```ruby
+class Products::CreateService < BetterService::Services::CreateService
+  cache_contexts :products, :homepage
+
+  # Cache is automatically invalidated for these contexts after create!
+  # No need to call invalidate_cache_for manually
+end
+```
+
+When the service completes successfully:
+1. The product is created/updated/deleted
+2. Cache is automatically invalidated for all defined contexts
+3. All cache keys matching the patterns are cleared
+
+### Disabling Auto-Invalidation
+
+Control auto-invalidation with the `auto_invalidate_cache` DSL:
+
+```ruby
+class Products::CreateService < BetterService::Services::CreateService
+  cache_contexts :products
+  auto_invalidate_cache false  # Disable automatic invalidation
+
+  process_with do |data|
+    product = user.products.create!(params)
+
+    # Manual control: only invalidate for featured products
+    invalidate_cache_for(user) if product.featured?
+
+    { resource: product }
+  end
+end
+```
+
+### Async Invalidation
+
+Combine with async option for non-blocking cache invalidation:
+
+```ruby
+class Products::CreateService < BetterService::Services::CreateService
+  cache_contexts :products, :homepage
+
+  # Auto-invalidation happens async via ActiveJob
+  cache_async true
+end
+```
+
+**Note**: Auto-invalidation only applies to Create, Update, and Destroy services. Index and Show services don't trigger cache invalidation since they're read-only operations.
+
+---
+
+## 🌍 Internationalization (I18n)
+
+BetterService includes built-in I18n support for service messages with automatic fallback.
+
+### Using the message() Helper
+
+All service templates use the `message()` helper for response messages:
+
+```ruby
+class Products::CreateService < BetterService::Services::CreateService
+  respond_with do |data|
+    success_result(message("create.success"), data)
+  end
+end
+```
+
+### Default Messages
+
+BetterService ships with English defaults in `config/locales/better_service.en.yml`:
+
+```yaml
+en:
+  better_service:
+    services:
+      default:
+        created: "Resource created successfully"
+        updated: "Resource updated successfully"
+        deleted: "Resource deleted successfully"
+        listed: "Resources retrieved successfully"
+        shown: "Resource retrieved successfully"
+```
+
+### Custom Messages
+
+Generate custom locale files for your services:
+
+```bash
+rails generate better_service:locale products
+```
+
+This creates `config/locales/products_services.en.yml`:
+
+```yaml
+en:
+  products:
+    services:
+      create:
+        success: "Product created and added to inventory"
+      update:
+        success: "Product updated successfully"
+      destroy:
+        success: "Product removed from catalog"
+```
+
+Then configure the namespace in your service:
+
+```ruby
+class Products::CreateService < BetterService::Services::CreateService
+  messages_namespace :products
+
+  respond_with do |data|
+    # Uses products.services.create.success
+    success_result(message("create.success"), data)
+  end
+end
+```
+
+### Fallback Chain
+
+Messages follow a 3-level fallback:
+1. Custom namespace (e.g., `products.services.create.success`)
+2. BetterService defaults (e.g., `better_service.services.default.created`)
+3. Key itself (e.g., `"create.success"`)
+
+### Message Interpolations
+
+Pass dynamic values to messages:
+
+```ruby
+respond_with do |data|
+  success_result(
+    message("create.success", product_name: data[:resource].name),
+    data
+  )
+end
+```
+
+**Locale file:**
+```yaml
+en:
+  products:
+    services:
+      create:
+        success: "Product '%{product_name}' created successfully"
+```
+
+---
+
+## 🎨 Presenter System
+
+BetterService includes an optional presenter layer for formatting data for API/view consumption.
+
+### Creating Presenters
+
+Generate a presenter class:
+
+```bash
+rails generate better_service:presenter Product
+```
+
+This creates:
+- `app/presenters/product_presenter.rb`
+- `test/presenters/product_presenter_test.rb`
+
+```ruby
+class ProductPresenter < BetterService::Presenter
+  def as_json(opts = {})
+    {
+      id: object.id,
+      name: object.name,
+      price: object.price,
+      display_name: "#{object.name} - $#{object.price}",
+
+      # Conditional fields based on user permissions
+      **(admin_fields if current_user&.admin?)
+    }
+  end
+
+  private
+
+  def admin_fields
+    {
+      cost: object.cost,
+      margin: object.price - object.cost
+    }
+  end
+end
+```
+
+### Using Presenters in Services
+
+Configure presenters via the `presenter` DSL:
+
+```ruby
+class Products::IndexService < BetterService::Services::IndexService
+  presenter ProductPresenter
+
+  presenter_options do
+    { current_user: user }
+  end
+
+  # Items are automatically formatted via ProductPresenter#as_json
+end
+```
+
+### Presenter Features
+
+**Available Methods:**
+- `object` - The resource being presented
+- `options` - Options hash passed via `presenter_options`
+- `current_user` - Shortcut for `options[:current_user]`
+- `as_json(opts)` - Format object as JSON
+- `to_json(opts)` - Serialize to JSON string
+- `to_h` - Alias for `as_json`
+
+**Example with scaffold:**
+```bash
+# Generate services + presenter in one command
+rails generate serviceable:scaffold Product --presenter
+```
+
+---
+
 ## 🏗️ Generators
 
-BetterService includes 8 powerful generators:
+BetterService includes 10 powerful generators:
 
 ### Scaffold Generator
 
@@ -878,6 +1113,9 @@ Generates all 5 CRUD services at once:
 
 ```bash
 rails generate serviceable:scaffold Product
+
+# With presenter
+rails generate serviceable:scaffold Product --presenter
 ```
 
 Creates:
@@ -886,23 +1124,16 @@ Creates:
 - `app/services/product/create_service.rb`
 - `app/services/product/update_service.rb`
 - `app/services/product/destroy_service.rb`
+- (Optional) `app/presenters/product_presenter.rb` with `--presenter`
 
 ### Individual Generators
 
 ```bash
-# Index service
+# CRUD Services
 rails generate serviceable:index Product
-
-# Show service
 rails generate serviceable:show Product
-
-# Create service
 rails generate serviceable:create Product
-
-# Update service
 rails generate serviceable:update Product
-
-# Destroy service
 rails generate serviceable:destroy Product
 
 # Custom action service
@@ -910,6 +1141,12 @@ rails generate serviceable:action Product publish
 
 # Workflow for composing services
 rails generate serviceable:workflow OrderPurchase --steps create_order charge_payment
+
+# Presenter for data transformation
+rails generate better_service:presenter Product
+
+# Custom locale file for I18n messages
+rails generate better_service:locale products
 ```
 
 ---

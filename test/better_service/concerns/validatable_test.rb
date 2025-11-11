@@ -66,13 +66,6 @@ module BetterService
       # Test Group 2: Validation Execution
       # ========================================
 
-      test "validates valid params successfully" do
-        service = ValidatedService.new(@user, params: { name: "John", age: 30 })
-
-        assert service.valid?
-        assert_empty service.validation_errors
-      end
-
       test "raises ValidationError for invalid params during initialize" do
         error = assert_raises(BetterService::Errors::Runtime::ValidationError) do
           ValidatedService.new(@user, params: { name: "", age: "not_number" })
@@ -88,12 +81,6 @@ module BetterService
         end
 
         assert error.context[:validation_errors].key?(:name)
-      end
-
-      test "validation passes when optional field omitted" do
-        service = ValidatedService.new(@user, params: { name: "John", age: 30 })
-
-        assert service.valid?
       end
 
       test "raises ValidationError for type mismatches" do
@@ -143,12 +130,6 @@ module BetterService
         assert errors.is_a?(Hash)
         assert errors[:name].is_a?(Array)
         assert errors[:name].all? { |e| e.is_a?(String) }
-      end
-
-      test "validation errors empty when params valid" do
-        service = ValidatedService.new(@user, params: { name: "John", age: 30 })
-
-        assert_empty service.validation_errors
       end
 
       # ========================================
@@ -213,14 +194,6 @@ module BetterService
 
         assert error.context[:validation_errors].key?(:name)
         assert error.context[:validation_errors].key?(:age)
-      end
-
-      test "no validation performed when schema not defined" do
-        service = Services::Base.new(@user, params: { anything: "goes" })
-
-        assert service.valid?
-        result = service.call
-        assert result[:success]
       end
     end
   end

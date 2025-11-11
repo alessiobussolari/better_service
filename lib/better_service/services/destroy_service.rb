@@ -31,6 +31,9 @@ module BetterService
     # Enable database transactions by default for destroy operations
     with_transaction true
 
+    # Enable automatic cache invalidation for destroy operations
+    self._auto_invalidate_cache = true
+
     # Default schema - requires id parameter
     schema do
       required(:id).filled

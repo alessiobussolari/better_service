@@ -19,6 +19,7 @@ module BetterService
     class_attribute :_process_block, default: nil
     class_attribute :_transform_block, default: nil
     class_attribute :_respond_block, default: nil
+    class_attribute :_auto_invalidate_cache, default: false
 
     include Concerns::Serviceable::Messageable
     include Concerns::Serviceable::Validatable
@@ -41,11 +42,29 @@ module BetterService
       validate_schema_presence!
       @user = user
       @params = safe_params_to_hash(params)
-      @validation_errors = {}
       validate_params!
     end
 
     # DSL methods to define phase blocks
+
+    # Configure whether this service allows nil user
+    #
+    # @param value [Boolean] Whether to allow nil user (default: true)
+    # @return [void]
+    #
+    # @example Allow nil user
+    #   class PublicService < BetterService::Services::Base
+    #     allow_nil_user true
+    #   end
+    #
+    # @example Require user (default)
+    #   class PrivateService < BetterService::Services::Base
+    #     allow_nil_user false
+    #   end
+    def self.allow_nil_user(value = true)
+      self._allow_nil_user = value
+    end
+
     def self.search_with(&block)
       self._search_block = block
     end
@@ -62,6 +81,31 @@ module BetterService
       self._respond_block = block
     end
 
+    # Configure automatic cache invalidation after write operations
+    #
+    # @param enabled [Boolean] Whether to automatically invalidate cache (default: true)
+    # @return [void]
+    #
+    # @example Enable automatic cache invalidation (default for Create/Update/Destroy)
+    #   class Products::CreateService < CreateService
+    #     cache_contexts :products, :category_products
+    #     # Cache is automatically invalidated after successful create
+    #   end
+    #
+    # @example Disable automatic cache invalidation
+    #   class Products::CreateService < CreateService
+    #     auto_invalidate_cache false
+    #
+    #     process_with do |data|
+    #       product = Product.create!(params)
+    #       invalidate_cache_for(user) if should_invalidate?  # Manual control
+    #       { resource: product }
+    #     end
+    #   end
+    def self.auto_invalidate_cache(enabled = true)
+      self._auto_invalidate_cache = enabled
+    end
+
     # Main entry point - executes the 5-phase flow
     def call
       # Validation already raises ValidationError in initialize
@@ -70,6 +114,12 @@ module BetterService
 
       data = search
       processed = process(data)
+
+      # Auto-invalidate cache after write operations if configured
+      if should_auto_invalidate_cache?
+        invalidate_cache_for(user)
+      end
+
       transformed = transform(processed)
       result = respond(transformed)
 
@@ -117,7 +167,33 @@ module BetterService
 
     # Phase 3: Transform - Handled by Presentable concern
 
-    # Phase 4: Respond - Handled by Viewable concern
+    # Phase 4: Respond - Format response (override in service types or with respond_with block)
+    def respond(data)
+      if self.class._respond_block
+        instance_exec(data, &self.class._respond_block)
+      else
+        success_result("Operation completed successfully", data)
+      end
+    end
+
+    # Check if cache should be automatically invalidated
+    #
+    # Auto-invalidation happens when:
+    # 1. auto_invalidate_cache is enabled (true)
+    # 2. cache_contexts are defined (something to invalidate)
+    # 3. Service is a write operation (Create/Update/Destroy)
+    #
+    # @return [Boolean] Whether cache should be invalidated
+    def should_auto_invalidate_cache?
+      return false unless self.class._auto_invalidate_cache
+      return false unless self.class.respond_to?(:_cache_contexts)
+      return false unless self.class._cache_contexts.present?
+
+      # Only auto-invalidate for write operations
+      is_a?(Services::CreateService) ||
+        is_a?(Services::UpdateService) ||
+        is_a?(Services::DestroyService)
+    end
 
     # Error handlers for runtime errors
     #
@@ -220,25 +296,6 @@ module BetterService
         metadata: metadata,
         **data
       }
-    end
-
-    def failure_result(message, errors = {}, code: nil)
-      result = {
-        success: false,
-        error: message,
-        errors: errors
-      }
-      result[:code] = code if code
-      result
-    end
-
-    def error_result(message, code: nil)
-      result = {
-        success: false,
-        errors: [message]
-      }
-      result[:code] = code if code
-      result
     end
 
     # Prepend Instrumentation at the end, after call method is defined

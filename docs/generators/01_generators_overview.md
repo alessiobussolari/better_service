@@ -33,7 +33,35 @@ Generate complete CRUD service set:
 
 ```bash
 rails g serviceable:scaffold ModelName
+
+# With presenter
+rails g serviceable:scaffold ModelName --presenter
 ```
+
+### Presenter Generator (1)
+
+Generate presenter classes for data transformation:
+
+```bash
+rails g better_service:presenter ModelName
+```
+
+Creates:
+- `app/presenters/model_name_presenter.rb`
+- `test/presenters/model_name_presenter_test.rb`
+
+### Locale Generator (1)
+
+Generate custom I18n locale files for service messages:
+
+```bash
+rails g better_service:locale namespace
+```
+
+Creates:
+- `config/locales/namespace_services.en.yml`
+
+**Total Generators: 10**
 
 ## Quick Start
 

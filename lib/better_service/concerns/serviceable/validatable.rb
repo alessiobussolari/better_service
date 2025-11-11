@@ -10,7 +10,6 @@ module BetterService
 
         included do
           class_attribute :_schema, default: nil
-          attr_reader :validation_errors
         end
 
         class_methods do
@@ -21,10 +20,6 @@ module BetterService
           def schema_defined?
             _schema.present?
           end
-        end
-
-        def valid?
-          @validation_errors.empty?
         end
 
         private

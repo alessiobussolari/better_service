@@ -251,20 +251,67 @@ end
 
 ### Cache Invalidation
 
-Automatically invalidate caches:
+UpdateService **automatically invalidates cache** after successful resource update when cache contexts are defined:
 
 ```ruby
 class Product::UpdateService < BetterService::UpdateService
   model_class Product
   cache_contexts :products, :product_details
 
+  # Auto-invalidation is ENABLED by default
+  # Cache is automatically cleared after update completes
+
   process_with do |data|
     resource = data[:resource]
     resource.update!(params.except(:id))
+    # No need to call invalidate_cache_for - it happens automatically!
+    { resource: resource }
+  end
+end
+```
 
-    # Invalidates :products and :product_details caches
-    invalidate_cache_for(user)
+**How Auto-Invalidation Works:**
+1. Resource is updated successfully
+2. Transaction commits
+3. Cache is automatically invalidated for all defined contexts (`:products`, `:product_details`)
+4. All matching cache keys are cleared for the user
 
+#### Disabling Auto-Invalidation
+
+For manual control over cache invalidation:
+
+```ruby
+class Product::UpdateService < BetterService::UpdateService
+  model_class Product
+  cache_contexts :products
+  auto_invalidate_cache false  # Disable automatic invalidation
+
+  process_with do |data|
+    resource = data[:resource]
+    old_price = resource.price
+    resource.update!(params.except(:id))
+
+    # Manual control: only invalidate if price changed
+    invalidate_cache_for(user) if resource.price != old_price
+
+    { resource: resource }
+  end
+end
+```
+
+#### Async Invalidation
+
+Combine auto-invalidation with async for non-blocking cache clearing:
+
+```ruby
+class Product::UpdateService < BetterService::UpdateService
+  model_class Product
+  cache_contexts :products, :homepage
+  cache_async true  # Auto-invalidation happens in background job
+
+  process_with do |data|
+    resource = data[:resource]
+    resource.update!(params.except(:id))
     { resource: resource }
   end
 end

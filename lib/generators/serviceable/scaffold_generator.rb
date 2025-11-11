@@ -12,6 +12,7 @@ module Serviceable
       class_option :skip_create, type: :boolean, default: false, desc: "Skip Create service generation"
       class_option :skip_update, type: :boolean, default: false, desc: "Skip Update service generation"
       class_option :skip_destroy, type: :boolean, default: false, desc: "Skip Destroy service generation"
+      class_option :presenter, type: :boolean, default: false, desc: "Generate presenter class"
 
       desc "Generate all CRUD services (Index, Show, Create, Update, Destroy)"
 
@@ -50,6 +51,13 @@ module Serviceable
         generate "serviceable:destroy", name
       end
 
+      def generate_presenter
+        return unless options[:presenter]
+
+        say "Generating Presenter...", :green
+        generate "better_service:presenter", name
+      end
+
       def show_completion_message
         say "\n" + "=" * 80
         say "Scaffold generation completed! 🎉", :green
@@ -60,6 +68,7 @@ module Serviceable
         say "  - #{class_name}::CreateService" unless options[:skip_create]
         say "  - #{class_name}::UpdateService" unless options[:skip_update]
         say "  - #{class_name}::DestroyService" unless options[:skip_destroy]
+        say "  - #{class_name}Presenter (app/presenters)" if options[:presenter]
         say "\nNext steps:"
         say "  1. Review and customize the generated services"
         say "  2. Update schemas with your specific validations"

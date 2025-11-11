@@ -138,11 +138,12 @@ module BetterService
         assert_equal "Booking created!", result
       end
 
-      test "message returns missing translation key on failure" do
+      test "message returns key itself when translation not found" do
         service = BookingService.new(@user)
         result = service.send(:message, "nonexistent.key")
 
-        assert_match(/translation missing/i, result)
+        # With fallback chain, missing translations return the key itself
+        assert_equal "nonexistent.key", result
       end
 
       test "message handles complex interpolations" do

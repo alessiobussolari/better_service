@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+# <%= presenter_class_name %> - Formats <%= class_name %> data for API/view consumption
+#
+# Usage in services:
+#   class <%= class_name.pluralize %>::IndexService < IndexService
+#     presenter <%= presenter_class_name %>
+#
+#     presenter_options do
+#       { current_user: user }
+#     end
+#   end
+class <%= presenter_class_name %> < BetterService::Presenter
+  # Define JSON representation
+  #
+  # @param opts [Hash] JSON serialization options
+  # @return [Hash] Formatted hash representation
+  def as_json(opts = {})
+    {
+      id: object.id,
+<% attributes_list.each do |attr| -%>
+      <%= attr %>: object.<%= attr %>,
+<% end -%>
+      # Add computed fields
+      # display_name: "#{object.first_name} #{object.last_name}",
+
+      # Add timestamps if needed
+      # created_at: object.created_at,
+      # updated_at: object.updated_at,
+
+      # Add conditional fields based on user permissions
+      # **(admin_fields if current_user&.admin?)
+    }
+  end
+
+  private
+
+  # Example: Include admin-only fields
+  # def admin_fields
+  #   {
+  #     internal_notes: object.internal_notes,
+  #     cost: object.cost
+  #   }
+  # end
+
+  # Example: Check if user has specific permission
+  # def user_can_edit?
+  #   return false unless current_user
+  #   current_user.id == object.user_id || current_user.admin?
+  # end
+end
+<% end -%>

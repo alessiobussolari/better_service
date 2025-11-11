@@ -45,6 +45,9 @@ class GeneratorTester
     # Test Workflowable generator
     test_workflowable_generator
 
+    # Test BetterService utility generators
+    test_better_service_generators
+
     # Print final report
     print_report
   end
@@ -72,6 +75,13 @@ class GeneratorTester
     section_header("Testing Workflowable Generator")
 
     test_workflow_generator
+  end
+
+  def test_better_service_generators
+    section_header("Testing BetterService Utility Generators")
+
+    test_locale_generator
+    test_presenter_generator
   end
 
   def test_index_generator
@@ -384,6 +394,109 @@ class GeneratorTester
     record_success(test_name)
   end
 
+  def test_locale_generator
+    test_name = "better_service:locale generator"
+    puts colorize("\n▶ Testing #{test_name}...", :cyan)
+
+    cleanup_locale_files("products")
+
+    success = run_generator("better_service:locale products")
+    return record_failure(test_name, "Generator command failed") unless success
+
+    locale_file = "config/locales/products_services.en.yml"
+    unless file_exists?(locale_file)
+      cleanup_locale_files("products")
+      return record_failure(test_name, "Locale file not created: #{locale_file}")
+    end
+
+    locale_content = File.read(locale_file)
+    checks = [
+      [locale_content.include?("en:"), "Missing en: root key"],
+      [locale_content.include?("products:"), "Missing products namespace"],
+      [locale_content.include?("services:"), "Missing services key"],
+      [locale_content.include?("create:"), "Missing create action"],
+      [locale_content.include?("update:"), "Missing update action"],
+      [locale_content.include?("destroy:"), "Missing destroy action"],
+      [locale_content.include?("index:"), "Missing index action"],
+      [locale_content.include?("show:"), "Missing show action"],
+      [locale_content.include?("success:"), "Missing success messages"],
+      [locale_content.include?("failure:"), "Missing failure messages"]
+    ]
+
+    failed_check = checks.find { |check, _| !check }
+    if failed_check
+      cleanup_locale_files("products")
+      return record_failure(test_name, failed_check[1])
+    end
+
+    # Verify valid YAML
+    begin
+      YAML.safe_load(locale_content)
+    rescue StandardError => e
+      cleanup_locale_files("products")
+      return record_failure(test_name, "Invalid YAML: #{e.message}")
+    end
+
+    cleanup_locale_files("products")
+    record_success(test_name)
+  end
+
+  def test_presenter_generator
+    test_name = "better_service:presenter generator"
+    puts colorize("\n▶ Testing #{test_name}...", :cyan)
+
+    cleanup_presenter_files("Product")
+
+    success = run_generator("better_service:presenter Product")
+    return record_failure(test_name, "Generator command failed") unless success
+
+    # Verify presenter file
+    presenter_file = "app/presenters/product_presenter.rb"
+    unless file_exists?(presenter_file)
+      cleanup_presenter_files("Product")
+      return record_failure(test_name, "Presenter file not created: #{presenter_file}")
+    end
+
+    presenter_content = File.read(presenter_file)
+    checks = [
+      [presenter_content.include?("class ProductPresenter"), "Missing class definition"],
+      [presenter_content.include?("< BetterService::Presenter"), "Wrong base class"],
+      [presenter_content.include?("def as_json(opts = {})"), "Missing as_json method"],
+      [presenter_content.include?("object"), "Missing object reference"]
+    ]
+
+    failed_check = checks.find { |check, _| !check }
+    if failed_check
+      cleanup_presenter_files("Product")
+      return record_failure(test_name, failed_check[1])
+    end
+
+    # Verify test file
+    test_file = "test/presenters/product_presenter_test.rb"
+    unless file_exists?(test_file)
+      cleanup_presenter_files("Product")
+      return record_failure(test_name, "Test file not created: #{test_file}")
+    end
+
+    test_content = File.read(test_file)
+    test_checks = [
+      [test_content.include?("class ProductPresenterTest"), "Missing test class"],
+      [test_content.include?("< ActiveSupport::TestCase"), "Wrong test base class"],
+      [test_content.include?("@presenter"), "Missing presenter instance"],
+      [test_content.include?("as_json"), "Missing as_json tests"],
+      [test_content.include?("options"), "Missing options tests"]
+    ]
+
+    failed_test_check = test_checks.find { |check, _| !check }
+    if failed_test_check
+      cleanup_presenter_files("Product")
+      return record_failure(test_name, failed_test_check[1])
+    end
+
+    cleanup_presenter_files("Product")
+    record_success(test_name)
+  end
+
   # Helper methods
 
   def run_generator(command)
@@ -430,6 +543,24 @@ class GeneratorTester
     # Remove directories if empty
     FileUtils.rmdir("app/workflows") if Dir.exist?("app/workflows") && Dir.empty?("app/workflows")
     FileUtils.rmdir("test/workflows") if Dir.exist?("test/workflows") && Dir.empty?("test/workflows")
+  end
+
+  def cleanup_locale_files(namespace)
+    locale_file = "config/locales/#{namespace}_services.en.yml"
+    FileUtils.rm_f(locale_file)
+  end
+
+  def cleanup_presenter_files(model)
+    model_name = model.underscore
+    presenter_file = "app/presenters/#{model_name}_presenter.rb"
+    test_file = "test/presenters/#{model_name}_presenter_test.rb"
+
+    FileUtils.rm_f(presenter_file)
+    FileUtils.rm_f(test_file)
+
+    # Remove directories if empty
+    FileUtils.rmdir("app/presenters") if Dir.exist?("app/presenters") && Dir.empty?("app/presenters")
+    FileUtils.rmdir("test/presenters") if Dir.exist?("test/presenters") && Dir.empty?("test/presenters")
   end
 
   def record_success(test_name)

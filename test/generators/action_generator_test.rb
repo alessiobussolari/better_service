@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "generators/better_service/action_generator"
+require "generators/serviceable/action_generator"
 
 class ActionGeneratorTest < Rails::Generators::TestCase
-  tests BetterService::Generators::ActionGenerator
+  tests Serviceable::Generators::ActionGenerator
   destination File.expand_path("../tmp", __dir__)
   setup :prepare_destination
 

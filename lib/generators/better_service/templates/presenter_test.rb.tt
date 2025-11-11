@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+<% module_namespacing do -%>
+class <%= presenter_class_name %>Test < ActiveSupport::TestCase
+  setup do
+    @<%= file_name %> = <%= class_name %>.new(
+      id: 1<%= attributes_list.map { |attr| ",\n      #{attr}: \"test_#{attr}\"" }.join %>
+    )
+    @presenter = <%= presenter_class_name %>.new(@<%= file_name %>)
+  end
+
+  test "presents <%= file_name %> as json" do
+    json = @presenter.as_json
+
+    assert_equal @<%= file_name %>.id, json[:id]
+<% attributes_list.each do |attr| -%>
+    assert_equal @<%= file_name %>.<%= attr %>, json[:<%= attr %>]
+<% end -%>
+  end
+
+  test "accepts options" do
+    presenter = <%= presenter_class_name %>.new(@<%= file_name %>, custom: "value")
+
+    assert_equal "value", presenter.options[:custom]
+  end
+
+  test "provides access to current_user from options" do
+    user = OpenStruct.new(id: 123, admin?: true)
+    presenter = <%= presenter_class_name %>.new(@<%= file_name %>, current_user: user)
+
+    assert_equal user, presenter.send(:current_user)
+  end
+
+  test "responds to to_h" do
+    assert_respond_to @presenter, :to_h
+    assert_kind_of Hash, @presenter.to_h
+  end
+
+  test "responds to to_json" do
+    assert_respond_to @presenter, :to_json
+    assert_kind_of String, @presenter.to_json
+  end
+end
+<% end -%>

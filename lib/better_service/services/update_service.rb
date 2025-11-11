@@ -32,6 +32,9 @@ module BetterService
     # Enable database transactions by default for update operations
     with_transaction true
 
+    # Enable automatic cache invalidation for update operations
+    self._auto_invalidate_cache = true
+
     # Default schema - requires id parameter
     schema do
       required(:id).filled

@@ -1,0 +1,27 @@
+# frozen_string_literal: true
+
+# I18n translations for <%= class_name %> services
+#
+# These messages are used when services define:
+#   messages_namespace :<%= plural_name %>
+#
+# Fallback chain:
+#   1. <%= plural_name %>.services.{action}.{key}
+#   2. better_service.services.default.{action}
+#   3. Key itself
+
+en:
+  <%= plural_name %>:
+    services:
+<% actions_list.each do |action| -%>
+      <%= action %>:
+        success: "<%= class_name %> <%= action %>d successfully"
+        failure: "Failed to <%= action %> <%= human_name.downcase %>"
+<% end -%>
+
+      # Custom messages
+      # Add your own message keys here
+      # Example:
+      # published:
+      #   success: "<%= class_name %> published and customers notified"
+      #   failure: "Failed to publish <%= human_name.downcase %>"

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "generators/better_service/index_generator"
+require "generators/serviceable/index_generator"
 
 class IndexGeneratorTest < Rails::Generators::TestCase
-  tests BetterService::Generators::IndexGenerator
+  tests Serviceable::Generators::IndexGenerator
   destination File.expand_path("../tmp", __dir__)
   setup :prepare_destination
 

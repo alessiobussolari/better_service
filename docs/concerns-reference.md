@@ -700,31 +700,6 @@ end
 
 ---
 
-#### `error_result`
-
-Format an error response (rarely used with pure exception pattern).
-
-```ruby
-error_result(message, errors = {})
-```
-
----
-
-### Default Messages
-
-Each service type has a default success message:
-
-| Service | Default Message |
-|---------|-----------------|
-| IndexService | "Resources loaded successfully" |
-| ShowService | "Resource loaded successfully" |
-| CreateService | "Resource created successfully" |
-| UpdateService | "Resource updated successfully" |
-| DestroyService | "Resource deleted successfully" |
-| ActionService | "Action completed successfully" |
-
----
-
 ### Custom Messages
 
 Override in `respond_with`:
@@ -734,6 +709,133 @@ respond_with do |data|
   success_result("Product published and notified customers", data)
 end
 ```
+
+---
+
+### I18n Integration
+
+BetterService supports internationalization (I18n) for service messages through the `message()` helper and custom locale files.
+
+#### The `message()` Helper
+
+Use the `message()` helper to load I18n messages with automatic fallback:
+
+```ruby
+respond_with do |data|
+  success_result(message("create.success"), data)
+end
+```
+
+**Signature:**
+```ruby
+message(key_path, interpolations = {})
+```
+
+**Parameters:**
+- `key_path` - The I18n key path (e.g., "create.success", "index.error")
+- `interpolations` - Optional hash of interpolation variables
+
+#### Fallback Chain
+
+Messages follow a 3-level fallback chain:
+
+1. **Custom Namespace** - Your application-specific messages
+2. **BetterService Defaults** - Built-in default messages
+3. **Key Itself** - Returns the key if no translations found
+
+**Example:**
+```ruby
+# With namespace configured:
+message("create.success")
+
+# Fallback order:
+# 1. products.services.create.success (if messages_namespace :products)
+# 2. better_service.services.default.created
+# 3. "create.success" (the key itself)
+```
+
+#### Configuring Custom Namespace
+
+Use `messages_namespace` to customize messages for a specific domain:
+
+```ruby
+class Products::CreateService < CreateService
+  messages_namespace :products
+
+  respond_with do |data|
+    # Will use products.services.create.success
+    success_result(message("create.success"), data)
+  end
+end
+```
+
+#### Creating Custom Locale Files
+
+Generate a custom locale file for your services:
+
+```bash
+rails generate better_service:locale products
+```
+
+This creates `config/locales/products_services.en.yml`:
+
+```yaml
+en:
+  products:
+    services:
+      create:
+        success: "Product created and inventory updated"
+        failure: "Failed to create product"
+      update:
+        success: "Product updated successfully"
+        failure: "Failed to update product"
+      destroy:
+        success: "Product removed from catalog"
+        failure: "Failed to remove product"
+      index:
+        success: "Products loaded"
+        failure: "Failed to load products"
+      show:
+        success: "Product details loaded"
+        failure: "Product not found"
+```
+
+#### Message Interpolations
+
+Pass dynamic values to your messages:
+
+```ruby
+respond_with do |data|
+  success_result(
+    message("create.success", product_name: data[:resource].name),
+    data
+  )
+end
+```
+
+**Locale file:**
+```yaml
+en:
+  products:
+    services:
+      create:
+        success: "Product '%{product_name}' created successfully"
+```
+
+#### Default Messages
+
+BetterService includes default messages for all service types in `config/locales/better_service.en.yml`:
+
+| Action | Default Message (en) |
+|--------|---------------------|
+| created | "Resource created successfully" |
+| updated | "Resource updated successfully" |
+| deleted | "Resource deleted successfully" |
+| listed | "Resources retrieved successfully" |
+| shown | "Resource retrieved successfully" |
+| action_completed | "Action completed successfully" |
+
+These defaults are automatically used when no custom namespace is configured.
 
 ---
 
@@ -747,7 +849,7 @@ end
 | **Presentable** | Transform | ❌ No | `transform_with` | Not used |
 | **Viewable** | Viewer | ❌ No | `presenter` | Not used |
 | **Cacheable** | Call wrapper | ❌ No | `cache_key`, `cache_ttl`, `cache_contexts` | Not used |
-| **Messageable** | Respond | ✅ Included | `success_result`, `error_result` | Included |
+| **Messageable** | Respond | ✅ Included | `success_result` | Included |
 
 ---
 

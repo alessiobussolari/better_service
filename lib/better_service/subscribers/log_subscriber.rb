@@ -14,6 +14,11 @@ module BetterService
     #   end
     class LogSubscriber
       class << self
+        # Storage for ActiveSupport::Notifications subscriptions
+        #
+        # @return [Array<ActiveSupport::Notifications::Fanout::Subscriber>]
+        attr_reader :subscriptions
+
         # Attach the subscriber to ActiveSupport::Notifications
         #
         # This method is called automatically when subscriber is enabled.
@@ -21,8 +26,23 @@ module BetterService
         #
         # @return [void]
         def attach
+          @subscriptions ||= []
           subscribe_to_service_events
           subscribe_to_cache_events
+        end
+
+        # Detach the subscriber from ActiveSupport::Notifications
+        #
+        # Removes all subscriptions. Useful for testing.
+        #
+        # @return [void]
+        def detach
+          if @subscriptions
+            @subscriptions.each do |subscription|
+              ActiveSupport::Notifications.unsubscribe(subscription)
+            end
+          end
+          @subscriptions = []
         end
 
         private
@@ -31,15 +51,15 @@ module BetterService
         #
         # @return [void]
         def subscribe_to_service_events
-          ActiveSupport::Notifications.subscribe("service.started") do |name, start, finish, id, payload|
+          @subscriptions << ActiveSupport::Notifications.subscribe("service.started") do |name, start, finish, id, payload|
             log_service_started(payload)
           end
 
-          ActiveSupport::Notifications.subscribe("service.completed") do |name, start, finish, id, payload|
+          @subscriptions << ActiveSupport::Notifications.subscribe("service.completed") do |name, start, finish, id, payload|
             log_service_completed(payload)
           end
 
-          ActiveSupport::Notifications.subscribe("service.failed") do |name, start, finish, id, payload|
+          @subscriptions << ActiveSupport::Notifications.subscribe("service.failed") do |name, start, finish, id, payload|
             log_service_failed(payload)
           end
         end
@@ -48,11 +68,11 @@ module BetterService
         #
         # @return [void]
         def subscribe_to_cache_events
-          ActiveSupport::Notifications.subscribe("cache.hit") do |name, start, finish, id, payload|
+          @subscriptions << ActiveSupport::Notifications.subscribe("cache.hit") do |name, start, finish, id, payload|
             log_cache_hit(payload)
           end
 
-          ActiveSupport::Notifications.subscribe("cache.miss") do |name, start, finish, id, payload|
+          @subscriptions << ActiveSupport::Notifications.subscribe("cache.miss") do |name, start, finish, id, payload|
             log_cache_miss(payload)
           end
         end

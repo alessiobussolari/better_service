@@ -16,14 +16,18 @@ module BetterService
 
       @user = OpenStruct.new(id: 456)
 
-      # Reset and attach subscribers
+      # Detach any existing subscribers and reset stats
+      Subscribers::LogSubscriber.detach
       Subscribers::StatsSubscriber.reset!
+
+      # Attach subscribers fresh for this test
       Subscribers::LogSubscriber.attach
       Subscribers::StatsSubscriber.attach
     end
 
     teardown do
-      # Reset stats
+      # Detach subscribers and reset
+      Subscribers::LogSubscriber.detach
       Subscribers::StatsSubscriber.reset!
       BetterService.reset_configuration!
     end

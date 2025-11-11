@@ -33,8 +33,18 @@ class <%= class_name %>::DestroyService < BetterService::Services::DestroyServic
   end
 
   # Phase 4: Respond - Format response (optional override)
+  # Uses I18n message helper with fallback to default messages
+  #
+  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
+  #   en:
+  #     <%= plural_table_name %>:
+  #       services:
+  #         destroy:
+  #           success: "<%= human_name %> deleted successfully!"
+  #
+  # Then configure namespace: messages_namespace :<%= plural_table_name %>
   respond_with do |data|
-    success_result("<%= human_name %> deleted successfully", data)
+    success_result(message("destroy.success"), data)
   end
 end
 <% end -%>

@@ -34,6 +34,9 @@ module BetterService
     # Enable database transactions by default for create operations
     with_transaction true
 
+    # Enable automatic cache invalidation for create operations
+    self._auto_invalidate_cache = true
+
     # Default empty schema - subclasses MUST override with specific validations
     schema do
       # Override in subclass with required fields

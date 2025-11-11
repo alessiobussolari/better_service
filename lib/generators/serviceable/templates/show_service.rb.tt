@@ -2,6 +2,14 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>::ShowService < BetterService::Services::ShowService
+  # Optional: Use a presenter to format response data
+  # Generate with: rails generate better_service:presenter <%= class_name %>
+  #
+  # presenter <%= class_name %>Presenter
+  # presenter_options do
+  #   { current_user: user }
+  # end
+
   # Schema for validating params
   schema do
     required(:id).filled
@@ -18,8 +26,18 @@ class <%= class_name %>::ShowService < BetterService::Services::ShowService
   # end
 
   # Phase 4: Respond - Format response (optional override)
+  # Uses I18n message helper with fallback to default messages
+  #
+  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
+  #   en:
+  #     <%= plural_table_name %>:
+  #       services:
+  #         show:
+  #           success: "<%= human_name %> loaded successfully!"
+  #
+  # Then configure namespace: messages_namespace :<%= plural_table_name %>
   respond_with do |data|
-    success_result("<%= human_name %> loaded successfully", data)
+    success_result(message("show.success"), data)
   end
 
   # Phase 5: Viewer - UI configuration (optional)

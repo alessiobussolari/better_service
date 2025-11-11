@@ -13,6 +13,12 @@ module BetterService
         template "better_service_initializer.rb.tt", "config/initializers/better_service.rb"
       end
 
+      def copy_locale_file
+        # Copy from gem's config/locales to Rails app's config/locales
+        locale_source = File.expand_path("../../../config/locales/better_service.en.yml", __dir__)
+        copy_file locale_source, "config/locales/better_service.en.yml"
+      end
+
       def display_readme
         say
         say "BetterService initializer created!", :green

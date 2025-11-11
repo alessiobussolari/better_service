@@ -263,19 +263,63 @@ end
 
 ### Cache Invalidation
 
-Automatically invalidate caches:
+CreateService **automatically invalidates cache** after successful resource creation when cache contexts are defined:
 
 ```ruby
 class Product::CreateService < BetterService::CreateService
   model_class Product
   cache_contexts :products, :category
 
+  # Auto-invalidation is ENABLED by default
+  # Cache is automatically cleared after create completes
+
+  process_with do |data|
+    resource = model_class.create!(params)
+    # No need to call invalidate_cache_for - it happens automatically!
+    { resource: resource }
+  end
+end
+```
+
+**How Auto-Invalidation Works:**
+1. Resource is created successfully
+2. Transaction commits
+3. Cache is automatically invalidated for all defined contexts (`:products`, `:category`)
+4. All matching cache keys are cleared for the user
+
+#### Disabling Auto-Invalidation
+
+For manual control over cache invalidation:
+
+```ruby
+class Product::CreateService < BetterService::CreateService
+  model_class Product
+  cache_contexts :products
+  auto_invalidate_cache false  # Disable automatic invalidation
+
   process_with do |data|
     resource = model_class.create!(params)
 
-    # Automatically invalidates :products and :category caches
-    invalidate_cache_for(user)
+    # Manual control: only invalidate for published products
+    invalidate_cache_for(user) if resource.published?
 
+    { resource: resource }
+  end
+end
+```
+
+#### Async Invalidation
+
+Combine auto-invalidation with async for non-blocking cache clearing:
+
+```ruby
+class Product::CreateService < BetterService::CreateService
+  model_class Product
+  cache_contexts :products, :homepage
+  cache_async true  # Auto-invalidation happens in background job
+
+  process_with do |data|
+    resource = model_class.create!(params)
     { resource: resource }
   end
 end

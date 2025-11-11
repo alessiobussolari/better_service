@@ -47,7 +47,7 @@ This runs 8 comprehensive integration tests with automatic database rollback.
 
 ### 5-Phase Service Flow
 
-All services inherit from `BetterService::Base` and follow a strict 5-phase execution flow in `lib/better_service/base.rb:64-85`:
+All services inherit from `BetterService::Services::Base` and follow a strict 5-phase execution flow:
 
 1. **Validation** (Mandatory) - Schema validation via Dry::Schema
 2. **Authorization** - Optional `authorize_with` block (fail-fast before search)
@@ -59,7 +59,7 @@ The phases execute sequentially in the `call` method, with automatic error handl
 
 ### Service Types
 
-Six specialized service classes in `lib/better_service/`:
+Six specialized service classes in `lib/better_service/services/`:
 
 - **IndexService** - List/collection operations, returns `{ items: [], metadata: {...} }`
 - **ShowService** - Single resource retrieval, returns `{ resource: {}, metadata: {...} }`
@@ -70,45 +70,85 @@ Six specialized service classes in `lib/better_service/`:
 
 ### Concerns Architecture
 
-Seven concern modules in `lib/better_service/concerns/` provide cross-cutting functionality:
+Seven concern modules in `lib/better_service/concerns/serviceable/` provide cross-cutting functionality:
 
 - **Validatable** - Dry::Schema integration, defines `schema` DSL, raises `ValidationError` on failure during `initialize`
-- **Authorizable** - `authorize_with` DSL, raises `AuthorizationError` on failure during `call`
+- **Authorizable** - `authorize_with` DSL and `allow_nil_user` DSL, raises `AuthorizationError` on failure during `call`
 - **Transactional** - Database transaction wrapping via `prepend`, DSL: `with_transaction true/false`
 - **Presentable** - Transforms data in phase 3 via `transform_with` block
 - **Viewable** - Viewer configuration in phase 5
 - **Cacheable** - Caching support for service results
-- **Messageable** - Response message formatting helpers
+- **Messageable** - Response message formatting helpers (`success_result`)
 
-**Important:** `Transactional` is prepended (not included) to wrap the `process` method in `lib/better_service/base.rb:28`.
+**Important:** `Transactional` is prepended (not included) to wrap the `process` method in `lib/better_service/services/base.rb`.
 
 ### Generators
 
-Seven Rails generators in `lib/generators/better_service/`:
+Ten Rails generators in `lib/generators/serviceable/` and `lib/generators/better_service/`:
 
-- `rails generate better_service:scaffold Product` - Generates all 5 CRUD services
-- `rails generate better_service:index Product`
-- `rails generate better_service:show Product`
-- `rails generate better_service:create Product`
-- `rails generate better_service:update Product`
-- `rails generate better_service:destroy Product`
-- `rails generate better_service:action Product publish` - Custom action service
+**Service Generators (serviceable namespace):**
+- `rails generate serviceable:scaffold Product` - Generates all 5 CRUD services (supports `--presenter` option)
+- `rails generate serviceable:index Product`
+- `rails generate serviceable:show Product`
+- `rails generate serviceable:create Product`
+- `rails generate serviceable:update Product`
+- `rails generate serviceable:destroy Product`
+- `rails generate serviceable:action Product publish` - Custom action service
+- `rails generate serviceable:workflow OrderPurchase` - Workflow orchestration
 
-Templates are in `lib/generators/better_service/templates/`.
+**Utility Generators (better_service namespace):**
+- `rails generate better_service:install` - Generates initializer + copies locale file
+- `rails generate better_service:presenter Product` - Creates presenter class and test
+- `rails generate better_service:locale products` - Creates custom I18n locale file
+
+Templates are in `lib/generators/serviceable/templates/` and `lib/generators/better_service/templates/`.
 
 ## Key Design Patterns
 
 ### Mandatory Schema Validation
-All services MUST define a `schema` block. The base class validates schema presence in `lib/better_service/base.rb` during `initialize`, raising `SchemaRequiredError` if missing. Parameter validation via Dry::Schema happens during `initialize` and raises `ValidationError` if params are invalid, before `call` is ever executed.
+All services MUST define a `schema` block. The base class validates schema presence in `lib/better_service/services/base.rb` during `initialize`, raising `SchemaRequiredError` if missing. Parameter validation via Dry::Schema happens during `initialize` and raises `ValidationError` if params are invalid, before `call` is ever executed.
 
 ### DSL Implementation
 Phase blocks (`search_with`, `process_with`, etc.) are stored as class attributes and executed via `instance_exec` in the corresponding phase methods. This allows access to `user`, `params`, and helper methods within blocks.
 
 ### Transaction Handling
-Create/Update/Destroy services enable transactions by default. The `Transactional` concern (prepended in `base.rb:28`) wraps the `process` method with `ActiveRecord::Base.transaction` when enabled.
+Create/Update/Destroy services enable transactions by default. The `Transactional` concern is prepended (not included) to wrap the `process` method with `ActiveRecord::Base.transaction` when enabled via the `with_transaction` DSL.
 
 ### Metadata System
 All services automatically include `metadata: { action: :action_name }` in success responses. The action name is set via `self._action_name = :symbol` in each service class. Additional metadata can be merged by returning `{ metadata: {...} }` from `process_with` blocks.
+
+### Message System (I18n)
+Services support internationalization via the `message(key_path, interpolations = {})` helper in the Messageable concern. Messages follow a 3-level fallback chain:
+1. **Custom namespace** - `{namespace}.services.{action}.{key}` (if `messages_namespace :namespace` is set)
+2. **Default BetterService messages** - `better_service.services.default.{action}`
+3. **Key itself** - Returns the key if no translations found
+
+Default messages are in `config/locales/better_service.en.yml`. Custom locale files can be generated with `rails generate better_service:locale namespace`.
+
+**Templates usage**: All 5 CRUD service templates use `message("action.success")` in `respond_with` blocks instead of hardcoded strings.
+
+### Auto-Invalidation Cache
+Create/Update/Destroy services have `_auto_invalidate_cache = true` by default (set in each service class). When `cache_contexts` are defined, cache is automatically invalidated after successful write operations in `Base#call` (after process phase). The helper method `should_auto_invalidate_cache?` checks:
+- Auto-invalidation is enabled
+- Cache contexts are defined
+- Service is Create/Update/Destroy type
+
+Disable with `auto_invalidate_cache false` DSL for manual control.
+
+### Presenter System
+Optional presenter layer via `BetterService::Presenter` base class in `lib/better_service/presenter.rb`. Presenters transform data in services via the `transform_with` block (Presentable concern).
+
+**Available methods in Presenter:**
+- `object` - The resource being presented
+- `options` - Options hash from `presenter_options` block
+- `current_user` - Shortcut for `options[:current_user]`
+- `as_json(opts)` - Format object as JSON
+- `to_json(opts)` - Serialize to JSON string
+- `to_h` - Alias for `as_json`
+
+**Generators:**
+- `rails generate better_service:presenter Product` - Creates presenter class and test
+- `rails generate serviceable:scaffold Product --presenter` - Creates services + presenter
 
 ### Error Handling
 
@@ -188,7 +228,7 @@ On success, services return hash structures:
 
 ## Testing
 
-Tests are in `test/` directory. The test suite excludes dummy app files and generator tests via `Rakefile:8-10`.
+Tests are in `test/` directory. The test suite excludes dummy app files via `Rakefile:8-9`. Generator tests are now enabled and run as part of the test suite.
 
 Test structure:
 - Unit tests for each service type and concern

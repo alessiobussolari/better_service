@@ -91,6 +91,62 @@ module BetterService
     end
 
     # ========================================
+    # allow_nil_user DSL Tests
+    # ========================================
+
+    test "allow_nil_user DSL allows nil user when set to true" do
+      service_class = Class.new(Services::Base) do
+        allow_nil_user true
+      end
+
+      service = service_class.new(nil, params: {})
+
+      assert_nil service.user
+    end
+
+    test "allow_nil_user DSL requires user when set to false" do
+      service_class = Class.new(Services::Base) do
+        allow_nil_user false
+      end
+
+      error = assert_raises(BetterService::Errors::Configuration::NilUserError) do
+        service_class.new(nil, params: {})
+      end
+
+      assert_match(/User cannot be nil/, error.message)
+    end
+
+    test "allow_nil_user DSL defaults to true when called without argument" do
+      service_class = Class.new(Services::Base) do
+        allow_nil_user  # No argument, should default to true
+      end
+
+      service = service_class.new(nil, params: {})
+
+      assert_nil service.user
+    end
+
+    test "allow_nil_user is backward compatible with direct attribute assignment" do
+      service_class = Class.new(Services::Base) do
+        self._allow_nil_user = true
+      end
+
+      service = service_class.new(nil, params: {})
+
+      assert_nil service.user
+    end
+
+    test "allow_nil_user still accepts valid user when enabled" do
+      service_class = Class.new(Services::Base) do
+        allow_nil_user true
+      end
+
+      service = service_class.new(@user, params: {})
+
+      assert_equal @user, service.user
+    end
+
+    # ========================================
     # Result Helpers Tests
     # ========================================
 
@@ -110,33 +166,6 @@ module BetterService
       assert_equal "Done", result[:message]
       assert_equal [1, 2, 3], result[:items]
       assert_equal 3, result[:count]
-    end
-
-    test "failure_result returns hash with success false" do
-      service = Services::Base.new(@user)
-      result = service.send(:failure_result, "Operation failed")
-
-      refute result[:success]
-      assert_equal "Operation failed", result[:error]
-    end
-
-    test "failure_result includes errors hash" do
-      service = Services::Base.new(@user)
-      errors = { name: "can't be blank", email: "is invalid" }
-      result = service.send(:failure_result, "Validation failed", errors)
-
-      refute result[:success]
-      assert_equal "Validation failed", result[:error]
-      assert_equal errors, result[:errors]
-    end
-
-    test "failure_result handles empty errors" do
-      service = Services::Base.new(@user)
-      result = service.send(:failure_result, "Something went wrong")
-
-      refute result[:success]
-      assert_equal "Something went wrong", result[:error]
-      assert_equal({}, result[:errors])
     end
 
     test "success_result includes metadata with action when action_name is set" do
@@ -354,13 +383,6 @@ module BetterService
         required(:age).filled(:integer)
         optional(:email).filled(:string)
       end
-    end
-
-    test "validates params with schema" do
-      service = ValidatedService.new(@user, params: { name: "John", age: 30 })
-
-      assert service.valid?
-      assert_empty service.validation_errors
     end
 
     test "raises ValidationError on validation failure during initialize" do

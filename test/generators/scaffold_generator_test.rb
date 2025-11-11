@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "generators/better_service/scaffold_generator"
+require "generators/serviceable/scaffold_generator"
 
 class ScaffoldGeneratorTest < Rails::Generators::TestCase
-  tests BetterService::Generators::ScaffoldGenerator
+  tests Serviceable::Generators::ScaffoldGenerator
   destination File.expand_path("../tmp", __dir__)
   setup :prepare_destination
 
@@ -72,6 +72,34 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
     assert_file "app/services/booking/show_service.rb"
     assert_file "app/services/booking/create_service.rb"
     assert_file "app/services/booking/update_service.rb"
+    assert_no_file "app/services/booking/destroy_service.rb"
+  end
+
+  test "does not generate presenter by default" do
+    run_generator ["booking"]
+
+    assert_no_file "app/presenters/booking_presenter.rb"
+    assert_no_file "test/presenters/booking_presenter_test.rb"
+  end
+
+  test "generates presenter when --presenter is passed" do
+    run_generator ["booking", "--presenter"]
+
+    assert_file "app/presenters/booking_presenter.rb" do |content|
+      assert_match(/class BookingPresenter < BetterService::Presenter/, content)
+    end
+
+    assert_file "test/presenters/booking_presenter_test.rb" do |content|
+      assert_match(/class BookingPresenterTest < ActiveSupport::TestCase/, content)
+    end
+  end
+
+  test "can combine --presenter with skip options" do
+    run_generator ["booking", "--presenter", "--skip-index", "--skip-destroy"]
+
+    assert_file "app/presenters/booking_presenter.rb"
+    assert_no_file "app/services/booking/index_service.rb"
+    assert_file "app/services/booking/show_service.rb"
     assert_no_file "app/services/booking/destroy_service.rb"
   end
 end

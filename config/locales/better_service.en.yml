@@ -1,0 +1,37 @@
+# frozen_string_literal: true
+
+# BetterService Default Locale File (English)
+#
+# This file contains default messages for BetterService operations.
+# These messages are used as fallbacks when services don't define
+# their own custom messages via the message() helper.
+#
+# To override messages for a specific namespace:
+# 1. Define a namespace with messages_namespace in your service
+# 2. Create locale entries under that namespace
+#
+# Example:
+#   products:
+#     services:
+#       create:
+#         success: "Product created successfully"
+
+en:
+  better_service:
+    services:
+      # Default success messages for standard CRUD operations
+      default:
+        created: "Resource created successfully"
+        updated: "Resource updated successfully"
+        deleted: "Resource deleted successfully"
+        listed: "Resources retrieved successfully"
+        shown: "Resource retrieved successfully"
+        action_completed: "Action completed successfully"
+
+      # Default error messages
+      errors:
+        validation_failed: "Validation failed"
+        unauthorized: "You are not authorized to perform this action"
+        not_found: "Resource not found"
+        database_error: "A database error occurred"
+        execution_error: "An error occurred while processing your request"

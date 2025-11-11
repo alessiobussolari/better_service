@@ -20,22 +20,6 @@ module BetterService
 
       private
 
-      # Override respond to add viewer phase
-      def respond(data)
-        # Get base result from parent respond
-        if self.class._respond_block
-          result = instance_exec(data, &self.class._respond_block)
-        else
-          result = success_result("Operation completed successfully", data)
-        end
-
-        # Add viewer if enabled
-        return result unless viewer_enabled?
-
-        view_config = execute_viewer(data, data, result)
-        result.merge(view: view_config)
-      end
-
       def viewer_enabled?
         self.class._viewer_enabled && self.class._viewer_block.present?
       end
