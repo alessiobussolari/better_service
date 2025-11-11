@@ -44,7 +44,7 @@ class ApplicationService < BetterService::Services::Base
 end
 
 module BookingService
-  class IndexService < BetterService::IndexService
+  class IndexService < BetterService::Services::IndexService
     search_with do
       { items: user.bookings.to_a }
     end
@@ -65,7 +65,7 @@ module BookingService
     end
   end
 
-  class CreateService < BetterService::CreateService
+  class CreateService < BetterService::Services::CreateService
     schema do
       required(:title).filled(:string)
       required(:date).filled(:date)
@@ -108,10 +108,14 @@ puts
 
 # Test 3: Validatable
 puts "Test 3: Validatable - Schema Validation"
-service = BookingService::CreateService.new(user, params: { title: "" })
-puts "  Valid? #{service.valid?}"
-puts "  Errors: #{service.validation_errors.inspect}"
-puts "✓ Validation working"
+begin
+  service = BookingService::CreateService.new(user, params: { title: "" })
+  service.call
+  puts "✗ Should have raised ValidationError"
+rescue BetterService::Errors::Runtime::ValidationError => e
+  puts "  ✓ Correctly raised ValidationError: #{e.message}"
+  puts "  Validation errors: #{e.context[:validation_errors]}"
+end
 puts
 
 # Test 4: Create booking (valid params)

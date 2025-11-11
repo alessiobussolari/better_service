@@ -1,0 +1,157 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Test All - Comprehensive Test Suite Runner
+# Runs all tests sequentially: automated tests + manual tests
+
+require "fileutils"
+
+# Colors for output
+def red(text); "\e[31m#{text}\e[0m"; end
+def green(text); "\e[32m#{text}\e[0m"; end
+def yellow(text); "\e[33m#{text}\e[0m"; end
+def blue(text); "\e[34m#{text}\e[0m"; end
+def bold(text); "\e[1m#{text}\e[0m"; end
+
+# Header
+def print_header(title)
+  puts
+  puts "=" * 80
+  puts bold(title.center(80))
+  puts "=" * 80
+  puts
+end
+
+# Section header
+def print_section(title, number, total)
+  puts
+  puts "-" * 80
+  puts bold("  [#{number}/#{total}] #{title}")
+  puts "-" * 80
+  puts
+end
+
+# Results storage
+@results = []
+@start_time = Time.now
+
+def run_test_group(name, command, description)
+  puts blue("→ Running: #{description}")
+  puts blue("  Command: #{command}")
+  puts
+
+  start = Time.now
+  success = system(command)
+  duration = Time.now - start
+
+  @results << {
+    name: name,
+    description: description,
+    success: success,
+    duration: duration
+  }
+
+  puts
+  if success
+    puts green("✓ #{name} passed (#{duration.round(2)}s)")
+  else
+    puts red("✗ #{name} failed (#{duration.round(2)}s)")
+    puts
+    puts red("=" * 80)
+    puts red("  TEST SUITE STOPPED - Fix errors above before continuing")
+    puts red("=" * 80)
+    exit(1)
+  end
+end
+
+# Main execution
+print_header("BETTERSERVICE - COMPREHENSIVE TEST SUITE")
+
+puts "This script runs all tests sequentially:"
+puts "  1. Automated tests (rake test)"
+puts "  2. Manual service tests (scripts/manual/service_test.rb)"
+puts "  3. Manual generator tests (scripts/manual/generator_test.rb)"
+puts "  4. Manual integration tests (scripts/manual/integration_test.rb)"
+puts
+puts yellow("⚠️  Note: Tests will stop at first failure")
+puts
+
+# Test 1: Automated tests
+print_section("Automated Tests (Rake)", 1, 4)
+run_test_group(
+  "Automated Tests",
+  "bundle exec rake test",
+  "Running all automated tests (341 tests across all service types)"
+)
+
+# Test 2: Manual service tests
+print_section("Manual Service Tests", 2, 4)
+run_test_group(
+  "Manual Service Tests",
+  "cd test/dummy && bin/rails runner '../../scripts/manual/service_test.rb'",
+  "Testing all service types in Rails environment with transactions"
+)
+
+# Test 3: Manual generator tests
+print_section("Manual Generator Tests", 3, 4)
+run_test_group(
+  "Manual Generator Tests",
+  "cd test/dummy && bin/rails runner '../../scripts/manual/generator_test.rb'",
+  "Testing all Rails generators with file creation and content validation"
+)
+
+# Test 4: Manual integration tests
+print_section("Manual Integration Tests", 4, 4)
+run_test_group(
+  "Manual Integration Tests",
+  "ruby -Ilib scripts/manual/integration_test.rb",
+  "Testing standalone integration with in-memory database (no Rails app)"
+)
+
+# Final report
+print_header("FINAL REPORT")
+
+total_duration = Time.now - @start_time
+passed = @results.count { |r| r[:success] }
+failed = @results.count { |r| !r[:success] }
+
+puts bold("Test Groups Summary:")
+puts
+@results.each_with_index do |result, idx|
+  status = result[:success] ? green("✓ PASSED") : red("✗ FAILED")
+  duration = result[:duration].round(2)
+  puts "  #{idx + 1}. #{result[:name].ljust(30)} #{status}  (#{duration}s)"
+  puts "     #{result[:description]}"
+  puts
+end
+
+puts "-" * 80
+puts bold("Total: #{@results.size} test groups")
+puts green("Passed: #{passed}")
+puts red("Failed: #{failed}") if failed > 0
+puts "Duration: #{total_duration.round(2)}s"
+puts "-" * 80
+puts
+
+if failed == 0
+  puts green("=" * 80)
+  puts green(bold("  🎉 ALL TEST GROUPS PASSED! 🎉".center(80)))
+  puts green("=" * 80)
+  puts
+  puts "BetterService is working correctly:"
+  puts "  ✓ All automated tests passing"
+  puts "  ✓ All manual service tests passing"
+  puts "  ✓ All generator tests passing"
+  puts "  ✓ All integration tests passing"
+  puts
+  puts green("Ready for release! 🚀")
+else
+  puts red("=" * 80)
+  puts red(bold("  ⚠️  SOME TEST GROUPS FAILED".center(80)))
+  puts red("=" * 80)
+  puts
+  puts "Please review the errors above and fix them."
+  exit(1)
+end
+
+puts
