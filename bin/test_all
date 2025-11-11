@@ -64,10 +64,56 @@ def run_test_group(name, command, description)
   end
 end
 
+def setup_test_preconditions
+  puts blue("→ Checking test preconditions...")
+  puts
+
+  # Check if Product CRUD services exist
+  required_services = %w[
+    index_service.rb
+    show_service.rb
+    create_service.rb
+    update_service.rb
+    destroy_service.rb
+  ]
+
+  services_dir = File.expand_path("../test/dummy/app/services/product", __dir__)
+  missing_services = required_services.reject do |service|
+    File.exist?(File.join(services_dir, service))
+  end
+
+  if missing_services.empty?
+    puts green("  ✓ All required Product services exist")
+    puts
+    return true
+  end
+
+  puts yellow("  ⚠️  Missing Product services: #{missing_services.join(', ')}")
+  puts blue("  → Generating Product CRUD services...")
+  puts
+
+  # Change to dummy app directory and run scaffold generator
+  Dir.chdir("test/dummy") do
+    success = system("bin/rails generate serviceable:scaffold Product --skip 2>&1")
+    unless success
+      puts
+      puts red("✗ Failed to generate Product services")
+      puts red("  Please run manually: cd test/dummy && bin/rails generate serviceable:scaffold Product")
+      exit(1)
+    end
+  end
+
+  puts
+  puts green("  ✓ Product services generated successfully")
+  puts
+  true
+end
+
 # Main execution
 print_header("BETTERSERVICE - COMPREHENSIVE TEST SUITE")
 
 puts "This script runs all tests sequentially:"
+puts "  0. Setup & Preconditions"
 puts "  1. Automated tests (rake test)"
 puts "  2. Manual service tests (scripts/manual/service_test.rb)"
 puts "  3. Manual generator tests (scripts/manual/generator_test.rb)"
@@ -75,6 +121,10 @@ puts "  4. Manual integration tests (scripts/manual/integration_test.rb)"
 puts
 puts yellow("⚠️  Note: Tests will stop at first failure")
 puts
+
+# Setup: Check and generate missing services
+print_section("Setup & Preconditions", 0, 4)
+setup_test_preconditions
 
 # Test 1: Automated tests
 print_section("Automated Tests (Rake)", 1, 4)
