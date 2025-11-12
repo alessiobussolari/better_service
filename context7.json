@@ -69,6 +69,10 @@
   ],
   "previousVersions": [
     {
+      "tag": "v1.0.0",
+      "title": "version 1.0.0 (stable release) - complete service framework with instrumentation, subscribers, and comprehensive documentation"
+    },
+    {
       "tag": "v0.1.0",
       "title": "version 0.1.0 (initial release) - 6 service types, workflows, generators, cache management"
     }

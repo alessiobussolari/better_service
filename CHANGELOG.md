@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-11-12
+
+### Added
+
+#### Presenter System
+- **`BetterService::Presenter` base class** - New presenter framework for transforming service data into view-friendly formats
+  - `#as_json(opts)` - Override to define custom JSON representation
+  - `#to_json(opts)` - JSON string serialization
+  - `#to_h` - Hash representation alias
+  - `#current_user` - Access current user from options
+  - `#include_field?(field)` - Conditional field rendering
+  - `#user_can?(role)` - Role-based permission checks
+- **Presenter generator** (`rails generate better_service:presenter`) - Generate presenter classes and tests
+- **Scaffold `--presenter` flag** - Generate presenter along with CRUD services
+
+#### I18n Message System
+- **Default locale file** (`config/locales/better_service.en.yml`) with standard success messages for all service actions
+- **Enhanced message helper** with 3-level fallback chain (custom namespace → default → key)
+- **Locale generator** (`rails generate better_service:locale`) - Generate I18n locale files with scaffolded translations
+- **Service templates updated** - All CRUD generators now use `message("action.success")` instead of hardcoded strings
+
+#### Cache Management
+- **Automatic cache invalidation** for Create/Update/Destroy services
+  - Enabled by default when `cache_contexts` are defined
+  - `auto_invalidate_cache` DSL to disable/enable per service
+  - Automatically invalidates after successful write operations
+  - `should_auto_invalidate_cache?` helper method
+
+#### Testing Infrastructure
+- **`bin/test_all` script** - Comprehensive test suite runner with:
+  - Automated tests (341 tests via `rake test`)
+  - Manual service tests with Rails environment
+  - Manual generator tests with validation
+  - Manual integration tests with standalone database
+  - Colored output with pass/fail tracking
+  - Automatic service generation for missing dependencies
+
+#### Documentation
+- **Advanced guides** (9 comprehensive guides totaling 5,600+ lines):
+  - Cache invalidation strategies
+  - Error handling patterns
+  - Workflow orchestration
+  - Concerns reference
+  - E-commerce implementation example
+  - Testing strategies
+- **Getting started guides** - Quick start and configuration reference
+- **Generator documentation** - Complete generators overview and usage
+- **Enhanced service documentation** with presenter integration examples
+
+#### Generator Enhancements
+- **Install generator** now copies default locale file to Rails app
+- **Enhanced templates** with comprehensive comments and I18n examples
+
+#### DSL Enhancements
+- **`allow_nil_user` DSL method** - Explicit method for configuring nil user behavior
+- **`auto_invalidate_cache` DSL method** - Control automatic cache invalidation per service
+
+### Changed
+
+- **Base service improvements** - `respond` method moved from Viewable concern to Base with cleaner implementation
+- **LogSubscriber enhancements** - Added `detach` method and subscription tracking for better memory management
+- **Service templates** - All CRUD templates updated to use I18n message helper
+- **Generator tests** - Now enabled and running as part of main test suite
+- **Integration tests** - Updated to use correct fully-qualified service class names
+
+### Fixed
+
+- **Integration test service class names** - Corrected paths to use `BetterService::Services::*` namespace
+- **Validation error handling** - Fixed tests to properly catch `ValidationError` exceptions
+- **Viewable concern cleanup** - Removed duplicate `respond` method override
+- **Validatable concern cleanup** - Removed unused `valid?` method that conflicted with Pure Exception Pattern
+- **Base service cleanup** - Removed deprecated `failure_result` and `error_result` methods
+
+### Removed
+
+- **Test files** for outdated examples (Article/Product services)
+- **Deprecated methods**:
+  - `Validatable#valid?` - Use exception handling instead
+  - `Validatable#validation_errors` - Access via `ValidationError#context[:validation_errors]`
+  - `Base#failure_result` - Services use Pure Exception Pattern
+  - `Base#error_result` - Services use Pure Exception Pattern
+
 ## [1.0.0] - 2025-11-11
 
 ### Added

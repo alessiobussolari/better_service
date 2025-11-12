@@ -50,7 +50,7 @@ rails console
 
 ```ruby
 BetterService::VERSION
-# => "1.0.0" (or your installed version)
+# => "1.0.1" (or your installed version)
 ```
 
 ---
