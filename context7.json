@@ -2,6 +2,8 @@
   "$schema": "https://context7.com/schema/context7.json",
   "projectTitle": "BetterService",
   "description": "BetterService is a service object framework for Ruby/Rails applications, designed for the Better* gems ecosystem. It provides 6 specialized service types (Index, Show, Create, Update, Destroy, Action), 5-phase execution flow (Validation → Authorization → Search → Process → Transform → Respond), schema validation with Dry::Schema, automatic transaction management, cache invalidation, presenter integration, workflow composition with automatic rollback support, and built-in instrumentation with ActiveSupport::Notifications (service lifecycle events, cache events, StatsSubscriber for metrics, LogSubscriber for logging, custom subscriber support).",
+  "url": "https://context7.com/alessiobussolari/better_service",
+  "public_key": "pk_B9nH6LdAbbONpo8kXlCON",
   "branch": "main",
   "folders": [
     "context7",
@@ -55,6 +57,7 @@
     "Cache invalidation: define cache_contexts :context_name, then call invalidate_cache_for(user) in process_with to clear related caches",
     "Presenters format output: presenter PresenterClass, must implement self.present(resource) class method, applied automatically before respond",
     "Workflows compose services: step :name, with: ServiceClass, params: ->(context) { {} }, if: ->(context) { condition }, on_error: ->(context, error) { log }",
+    "Workflow conditional branching (v1.1.0+): use branch do with on ->(ctx) { condition } for multi-path execution, otherwise do for default path - first matching condition wins, only executed branch is rolled back on failure, branches_taken tracked in metadata",
     "Workflow context accumulates results: starts with params, each step adds keys, accessible in params mapping and conditions",
     "Generators: rails g serviceable:index/show/create/update/destroy/action/workflow/scaffold ModelName with options --cache --authorize --presenter",
     "Service initialization requires user by default (use self._allow_nil_user = true for public services), params are always validated against schema",
