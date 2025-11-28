@@ -193,6 +193,153 @@ end
 
 ---
 
+### Pattern 6: Conditional Branching (Multi-Path Workflows)
+
+Execute different step sequences based on runtime conditions using the branch DSL.
+
+```ruby
+class Payment::ProcessWorkflow < BetterService::Workflow
+  step :validate_order, with: Order::ValidateService
+
+  # Branch by payment method - only one path executes
+  branch do
+    on ->(ctx) { ctx.validate_order.payment_method == 'credit_card' } do
+      step :validate_card, with: Payment::ValidateCardService
+      step :charge_card, with: Payment::ChargeCreditCardService
+      step :verify_3d_secure,
+           with: Payment::Verify3DSecureService,
+           if: ->(ctx) { ctx.charge_card.requires_3d_secure? }
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'paypal' } do
+      step :create_paypal_order, with: Payment::Paypal::CreateOrderService
+      step :capture_paypal, with: Payment::Paypal::CaptureService
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'bank_transfer' } do
+      step :generate_reference, with: Payment::GenerateReferenceService
+      step :send_instructions, with: Email::BankInstructionsService
+    end
+
+    otherwise do
+      step :log_unsupported, with: Logging::LogPaymentMethodService
+      step :notify_admin, with: Email::AdminNotificationService
+    end
+  end
+
+  step :finalize_order, with: Order::FinalizeService
+end
+```
+
+**Key Benefits:**
+- Clean multi-way conditional execution
+- Only executed branch steps are rolled back on failure
+- Metadata tracks which branch was taken
+- Avoids creating separate workflow classes for each path
+
+---
+
+### Pattern 7: Nested Branching
+
+Branches can be nested for complex decision trees.
+
+```ruby
+class Document::ApprovalWorkflow < BetterService::Workflow
+  step :validate_document, with: Document::ValidateService
+
+  # Outer branch - by document type
+  branch do
+    on ->(ctx) { ctx.validate_document.type == 'contract' } do
+      step :legal_review, with: Legal::ReviewService
+
+      # Nested branch - by contract value
+      branch do
+        on ->(ctx) { ctx.validate_document.value > 100_000 } do
+          step :ceo_approval, with: Approval::CEOService
+          step :board_approval, with: Approval::BoardService
+        end
+
+        on ->(ctx) { ctx.validate_document.value > 10_000 } do
+          step :manager_approval, with: Approval::ManagerService
+        end
+
+        otherwise do
+          step :supervisor_approval, with: Approval::SupervisorService
+        end
+      end
+    end
+
+    on ->(ctx) { ctx.validate_document.type == 'invoice' } do
+      branch do
+        on ->(ctx) { ctx.validate_document.amount > 5_000 } do
+          step :finance_manager_approval, with: Approval::FinanceManagerService
+        end
+
+        otherwise do
+          step :accountant_approval, with: Approval::AccountantService
+        end
+      end
+    end
+
+    otherwise do
+      step :standard_approval, with: Approval::StandardService
+    end
+  end
+
+  step :finalize_document, with: Document::FinalizeService
+end
+```
+
+**Nested Branch Rules:**
+- Unlimited nesting depth
+- Each branch evaluates independently
+- All branch decisions tracked in `branches_taken` metadata
+- Rollback only affects executed nested steps
+
+---
+
+### Pattern 8: Branching vs Conditional Steps
+
+**When to use branches:**
+- Multiple steps per path (2+ steps)
+- Complex multi-way decision logic (3+ paths)
+- Different workflows based on state
+
+**When to use conditional steps:**
+- Single optional step
+- Simple binary condition
+- Feature flags
+
+```ruby
+# ❌ DON'T use branching for single steps
+branch do
+  on ->(ctx) { ctx.coupon.present? } do
+    step :apply_coupon, with: ApplyCouponService
+  end
+end
+
+# ✅ DO use conditional step instead
+step :apply_coupon,
+     with: ApplyCouponService,
+     if: ->(ctx) { ctx.coupon.present? }
+
+# ✅ DO use branching for multiple steps per path
+branch do
+  on ->(ctx) { ctx.payment_method == 'card' } do
+    step :validate_card
+    step :charge_card
+    step :store_card_token
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :create_paypal_order
+    step :capture_payment
+  end
+end
+```
+
+---
+
 ## Error Recovery
 
 ### Pattern 1: Retry Failed Steps

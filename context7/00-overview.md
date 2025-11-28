@@ -12,12 +12,15 @@ BetterService is a service object framework for Ruby/Rails applications that pro
 - **Schema Validation**: Dry::Schema integration for parameter validation
 - **Authorization**: Built-in authorization blocks
 - **Cache Management**: Automatic cache invalidation
-- **Workflows**: Compose multiple services with automatic rollback
+- **Workflows**: Compose multiple services with automatic rollback and conditional branching
+- **Repository Pattern**: Clean data access layer separation
+- **Error Handling**: Structured exception hierarchy with rich context
+- **I18n Support**: Built-in internationalization for service messages
 - **Generators**: Rails generators for rapid service creation
 
 ## Documentation Structure
 
-This context7 documentation is organized into 5 main categories:
+This context7 documentation is organized into 8 main categories:
 
 ### 1. Services (`/services`)
 Examples for all 6 service types plus core features:
@@ -32,6 +35,7 @@ Examples for all 6 service types plus core features:
 Multi-step operation patterns:
 - Workflow basics and composition
 - Step configuration (conditional, parameter mapping, error handling)
+- Conditional branching with `branch`/`on`/`otherwise`
 - Real-world workflow patterns
 
 ### 3. Generators (`/generators`)
@@ -55,6 +59,27 @@ Production-ready instrumentation and monitoring:
 - Built-in LogSubscriber for automatic logging
 - Custom subscriber examples for monitoring systems
 - Configuration for different environments
+
+### 6. Repository Pattern (`/repository`)
+Data access layer separation:
+- BaseRepository with CRUD and advanced search
+- RepositoryAware concern for services
+- Custom repository patterns
+- Query method conventions
+
+### 7. Error Handling (`/errors`)
+Structured exception system:
+- Complete error hierarchy (Configuration vs Runtime vs Workflow)
+- Error codes reference
+- Context and original error access
+- Controller error handling patterns
+
+### 8. I18n System (`/i18n`)
+Internationalization for service messages:
+- 3-level message lookup chain
+- Custom namespace configuration
+- Locale file customization
+- Interpolation support
 
 ## Critical Rules
 
@@ -127,3 +152,6 @@ end
 - Generator examples: `/context7/generators`
 - Common patterns: `/context7/examples`
 - Advanced features: `/context7/advanced`
+- Repository pattern: `/context7/repository`
+- Error handling: `/context7/errors`
+- I18n system: `/context7/i18n`

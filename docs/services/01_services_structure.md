@@ -63,7 +63,7 @@ end
 
 ```ruby
 search_with do
-  { items: user.bookings.where(status: params[:status]) }
+  { items: user.orders.where(status: params[:status]) }
 end
 ```
 

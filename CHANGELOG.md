@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-13
+
+### Added
+
+#### Workflow Conditional Branching
+- **`branch` DSL method** - Define conditional branch groups in workflows for multi-path execution
+- **`on` DSL method** - Define conditional paths within branches with lambda conditions
+- **`otherwise` DSL method** - Define default fallback path when no condition matches
+- **Branch execution engine** - First-match semantics with single-path execution per branch
+- **Nested branching support** - Unlimited depth for complex decision trees
+- **Branch metadata tracking** - `branches_taken` metadata shows which branches executed
+- **Selective rollback** - Only executed branch steps are rolled back on failure
+- **Branch DSL classes**:
+  - `BetterService::Workflows::Branch` - Individual conditional path representation
+  - `BetterService::Workflows::BranchGroup` - Container for multiple branches
+  - `BetterService::Workflows::BranchDSL` - DSL context for branch definition
+- **Configuration error handling** - Raises `InvalidConfigurationError` when no branch matches without `otherwise`
+
+#### Documentation
+- **Complete branching documentation** across all workflow guides (6 files, 1,500+ lines):
+  - Workflows introduction with branching overview and examples
+  - Workflow steps with complete branch DSL reference
+  - Workflow examples with 4 real-world branching scenarios (payment routing, approval workflows, user tiers, content processing)
+  - Advanced workflows with branching patterns
+  - Workflow generator with branching syntax guide
+  - Testing guide with branch testing patterns
+- **Context7 AI documentation** - Concise branching examples for AI code generation tools
+- **README feature highlight** - Added branching to features list
+
+#### Testing
+- **Comprehensive test suite** for branching (42+ tests across 4 files):
+  - Basic branching functionality tests
+  - Integration tests with real database models
+  - Edge cases and boundary conditions
+  - Performance benchmarks
+  - Real-world examples (e-commerce, approvals, subscriptions)
+
+### Changed
+
+- **Workflow DSL enhanced** - Added branch support while maintaining backward compatibility
+- **Workflow execution** - Updated to handle both regular steps and branch groups polymorphically
+- **Workflow result builder** - Enhanced metadata to include `branches_taken` array
+- **Workflow base class** - Added `@branch_decisions` tracking
+
+### Technical Details
+
+**Branch Execution Rules:**
+- Conditions evaluated in definition order (first-match wins)
+- Only one branch path executes per `branch` block
+- `otherwise` is optional but recommended (raises error if no match and no `otherwise`)
+- Conditions receive full workflow context via lambda
+- All branch decisions tracked in metadata format: `"branch_N:on_M"` or `"branch_N:otherwise"`
+
+**Backward Compatibility:**
+- All existing workflows continue to work unchanged
+- No breaking changes to workflow API
+- `branches_taken` metadata only included when branches are used
+
+---
+
 ## [1.0.1] - 2025-11-12
 
 ### Added

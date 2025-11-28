@@ -9,10 +9,10 @@ module BetterService
   # Returns: { resource: {}, metadata: { action: :created } }
   #
   # Example:
-  #   class Bookings::CreateService < BetterService::Services::CreateService
+  #   class Orders::CreateService < BetterService::Services::CreateService
   #     schema do
   #       required(:title).filled(:string)
-  #       required(:date).filled(:date)
+  #       required(:total).filled(:decimal)
   #     end
   #
   #     search_with do
@@ -20,11 +20,11 @@ module BetterService
   #     end
   #
   #     process_with do |data|
-  #       booking = user.bookings.create!(
+  #       order = user.orders.create!(
   #         title: params[:title],
-  #         date: params[:date]
+  #         total: params[:total]
   #       )
-  #       { resource: booking }
+  #       { resource: order }
   #     end
   #   end
   class CreateService < Services::Base

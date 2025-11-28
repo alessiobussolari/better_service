@@ -48,6 +48,45 @@ end
 - ✅ Automatic rollback if any step fails
 - ✅ All steps wrapped in single transaction
 - ✅ Services remain independent and testable
+
+## Conditional Branching (v1.1.0+)
+
+Workflows support **conditional branching** for multi-path execution:
+
+```ruby
+class Payment::ProcessWorkflow < BetterService::Workflow
+  step :validate_order, with: Order::ValidateService
+
+  # Branch based on payment method - only one path executes
+  branch do
+    on ->(ctx) { ctx.validate_order.payment_method == 'credit_card' } do
+      step :charge_card, with: Payment::ChargeCreditCardService
+      step :verify_3d_secure, with: Payment::Verify3DSecureService
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'paypal' } do
+      step :charge_paypal, with: Payment::ChargePayPalService
+    end
+
+    otherwise do
+      step :manual_review, with: Payment::ManualReviewService
+    end
+  end
+
+  step :finalize_order, with: Order::FinalizeService
+end
+```
+
+**Branch DSL:**
+- `branch do ... end` - Define branch group
+- `on ->(ctx) { condition }` - Conditional path (first match wins)
+- `otherwise do ... end` - Default path
+
+**Key features:**
+- First-match semantics (like case/when)
+- Only executed branch is rolled back on failure
+- Unlimited nesting depth
+- Metadata tracks branches taken: `result[:metadata][:branches_taken]`
 - ✅ Clear, declarative flow
 
 ## Basic Workflow Example

@@ -22,16 +22,39 @@ module BetterService
         steps_executed = []
         steps_skipped = []
 
-        self.class._steps.each do |step|
-          # Execute step with around_step callbacks
+        self.class._steps.each do |step_or_branch|
+          # Handle BranchGroup (conditional branching)
+          if step_or_branch.is_a?(BranchGroup)
+            branch_result = nil
+            run_around_step_callbacks(step_or_branch, @context) do
+              branch_result = step_or_branch.call(@context, @user, @params)
+            end
+
+            # Track branch decisions (including nested)
+            if branch_result[:branch_decisions]
+              @branch_decisions.concat(branch_result[:branch_decisions])
+            end
+
+            # Track executed steps from the branch
+            if branch_result[:executed_steps]
+              branch_result[:executed_steps].each do |executed_step|
+                @executed_steps << executed_step
+                steps_executed << executed_step.name
+              end
+            end
+
+            next
+          end
+
+          # Handle regular Step
           result = nil
-          run_around_step_callbacks(step, @context) do
-            result = step.call(@context, @user, @params)
+          run_around_step_callbacks(step_or_branch, @context) do
+            result = step_or_branch.call(@context, @user, @params)
           end
 
           # Track skipped steps
           if result[:skipped]
-            steps_skipped << step.name
+            steps_skipped << step_or_branch.name
             next
           end
 
@@ -41,11 +64,11 @@ module BetterService
             rollback_steps
 
             raise Errors::Workflowable::Runtime::StepExecutionError.new(
-              "Step #{step.name} failed: #{result[:error] || result[:message]}",
+              "Step #{step_or_branch.name} failed: #{result[:error] || result[:message]}",
               code: ErrorCodes::STEP_FAILED,
               context: {
                 workflow: self.class.name,
-                step: step.name,
+                step: step_or_branch.name,
                 steps_executed: steps_executed,
                 errors: result[:errors] || {}
               }
@@ -53,8 +76,8 @@ module BetterService
           end
 
           # Track successful execution
-          @executed_steps << step
-          steps_executed << step.name
+          @executed_steps << step_or_branch
+          steps_executed << step_or_branch.name
         end
 
         # All steps succeeded
@@ -65,6 +88,9 @@ module BetterService
         )
       rescue Errors::Workflowable::Runtime::StepExecutionError
         # Step error already raised, just re-raise
+        raise
+      rescue Errors::Configuration::InvalidConfigurationError
+        # Configuration error (e.g., no matching branch), just re-raise
         raise
       rescue StandardError => e
         # Unexpected error during workflow execution

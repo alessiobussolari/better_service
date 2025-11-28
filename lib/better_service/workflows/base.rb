@@ -66,6 +66,7 @@ module BetterService
       @params = params
       @context = Workflowable::Context.new(user, **params)
       @executed_steps = []
+      @branch_decisions = []
       @start_time = nil
       @end_time = nil
     end

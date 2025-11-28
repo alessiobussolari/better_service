@@ -46,6 +46,55 @@ class User::RegistrationWorkflow < BetterService::Workflow
 end
 ```
 
+## Conditional Branching: Payment Routing (v1.1.0+)
+Route payment based on method with different processing steps.
+
+```ruby
+class Order::ProcessPaymentWorkflow < BetterService::Workflow
+  schema do
+    required(:order_id).filled(:integer)
+    required(:payment_method).filled(:string)
+  end
+
+  step :validate_order, with: Order::ValidateService
+
+  branch do
+    on ->(ctx) { ctx.payment_method == 'credit_card' } do
+      step :validate_card, with: Payment::ValidateCardService
+      step :charge_card, with: Payment::ChargeCreditCardService
+      step :verify_3d, with: Payment::Verify3DSecureService
+    end
+
+    on ->(ctx) { ctx.payment_method == 'paypal' } do
+      step :create_paypal_order, with: Payment::Paypal::CreateOrderService
+      step :capture_paypal, with: Payment::Paypal::CaptureService
+    end
+
+    on ->(ctx) { ctx.payment_method == 'bank_transfer' } do
+      step :generate_reference, with: Payment::GenerateReferenceService
+      step :send_instructions, with: Email::BankInstructionsService
+    end
+
+    otherwise do
+      step :manual_review, with: Payment::ManualReviewService
+    end
+  end
+
+  step :finalize_order, with: Order::FinalizeService
+end
+```
+
+**Usage:**
+```ruby
+result = Order::ProcessPaymentWorkflow.new(user, params: {
+  order_id: 123,
+  payment_method: 'credit_card'
+}).call
+
+result[:metadata][:branches_taken]
+# => ["branch_1:on_1"]  # Credit card path was taken
+```
+
 ## Article Publishing
 Validate, optimize, and publish content.
 

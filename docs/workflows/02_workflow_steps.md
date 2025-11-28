@@ -226,6 +226,440 @@ step :external_api_call,
 
 ---
 
+## Branch DSL
+
+### Overview
+
+The Branch DSL enables conditional workflow execution based on runtime conditions. Use branches when you need different execution paths without creating separate workflow classes.
+
+### branch
+
+Defines a branch group containing conditional paths.
+
+```ruby
+branch do
+  # Define conditional paths here
+end
+```
+
+**Examples:**
+
+```ruby
+# Simple two-way branch
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    step :premium_feature, with: PremiumService
+  end
+
+  otherwise do
+    step :basic_feature, with: BasicService
+  end
+end
+
+# Multi-way branch (3+ paths)
+branch do
+  on ->(ctx) { ctx.payment_method == 'credit_card' } do
+    step :charge_credit_card, with: CreditCardService
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :charge_paypal, with: PayPalService
+  end
+
+  on ->(ctx) { ctx.payment_method == 'bank_transfer' } do
+    step :generate_reference, with: BankTransferService
+  end
+
+  otherwise do
+    step :manual_processing, with: ManualService
+  end
+end
+```
+
+---
+
+### on
+
+Defines a conditional path within a branch. Receives a lambda that evaluates to true/false.
+
+```ruby
+on ->(context) { condition } do
+  # Steps to execute if condition is true
+end
+```
+
+**Signature:**
+- **Condition lambda**: Receives workflow context, returns boolean
+- **Block**: Contains steps to execute if condition matches
+
+**Examples:**
+
+```ruby
+# Simple condition
+on ->(ctx) { ctx.user.premium? } do
+  step :premium_feature, with: PremiumService
+end
+
+# Multiple conditions with boolean logic
+on ->(ctx) {
+  ctx.user.account_type == 'enterprise' &&
+  ctx.subscription.custom_billing? &&
+  ctx.subscription.annual_value > 50_000
+} do
+  step :enterprise_processing, with: EnterpriseService
+end
+
+# Condition checking object state
+on ->(ctx) {
+  ctx.validate_order.payment_method == 'credit_card' &&
+  ctx.validate_order.amount > 100
+} do
+  step :fraud_check, with: FraudCheckService
+  step :charge_card, with: ChargeCardService
+end
+
+# Condition using helper methods
+on ->(ctx) { ctx.order.requires_approval? } do
+  step :request_approval, with: ApprovalService
+end
+```
+
+**Execution Rules:**
+- **First-match wins**: Conditions evaluated in definition order
+- **Single path**: Only the first matching `on` block executes
+- **Skips rest**: Once a match is found, remaining `on` blocks are skipped
+- **Context access**: Lambda receives full workflow context
+
+---
+
+### otherwise
+
+Defines the default path when no `on` condition matches.
+
+```ruby
+otherwise do
+  # Steps to execute if no condition matches
+end
+```
+
+**Examples:**
+
+```ruby
+# Simple default path
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    step :premium_feature, with: PremiumService
+  end
+
+  otherwise do
+    step :default_feature, with: DefaultService
+  end
+end
+
+# Default with error handling
+branch do
+  on ->(ctx) { ctx.payment_method == 'credit_card' } do
+    step :charge_card, with: CreditCardService
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :charge_paypal, with: PayPalService
+  end
+
+  otherwise do
+    step :log_unsupported, with: LoggingService
+    step :notify_admin, with: NotificationService
+  end
+end
+```
+
+**Important Rules:**
+- **Optional**: Can be omitted, but raises error if no condition matches
+- **Only one**: Only one `otherwise` block allowed per branch
+- **Always last**: Should be defined after all `on` blocks
+- **No condition**: Executes unconditionally if reached
+
+**Without otherwise:**
+
+```ruby
+# ❌ Will raise error if no condition matches
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    step :premium_feature
+  end
+
+  on ->(ctx) { ctx.user.basic? } do
+    step :basic_feature
+  end
+  # If user is neither premium nor basic -> ERROR!
+end
+
+# ✅ Always provide otherwise for safety
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    step :premium_feature
+  end
+
+  on ->(ctx) { ctx.user.basic? } do
+    step :basic_feature
+  end
+
+  otherwise do
+    step :default_feature  # Handles any other case
+  end
+end
+```
+
+---
+
+### Nested Branches
+
+Branches can contain other branches for complex decision trees.
+
+```ruby
+class Order::ProcessingWorkflow < BetterService::Workflow
+  step :validate_order, with: ValidateService
+
+  # Outer branch - by user type
+  branch do
+    on ->(ctx) { ctx.user.enterprise? } do
+      step :enterprise_validation, with: EnterpriseValidationService
+
+      # Nested branch - by contract value
+      branch do
+        on ->(ctx) { ctx.validate_order.value > 100_000 } do
+          step :executive_approval, with: ExecutiveApprovalService
+        end
+
+        on ->(ctx) { ctx.validate_order.value > 10_000 } do
+          step :manager_approval, with: ManagerApprovalService
+        end
+
+        otherwise do
+          step :auto_approve, with: AutoApprovalService
+        end
+      end
+    end
+
+    on ->(ctx) { ctx.user.premium? } do
+      step :premium_processing, with: PremiumService
+    end
+
+    otherwise do
+      step :standard_processing, with: StandardService
+    end
+  end
+
+  step :finalize, with: FinalizeService
+end
+```
+
+**Nested Branch Rules:**
+- **Unlimited depth**: Can nest branches as deep as needed
+- **Independent execution**: Each branch evaluates its own conditions
+- **Metadata tracking**: All branch decisions tracked in `branches_taken`
+- **Rollback aware**: Only executed nested steps are rolled back
+
+---
+
+### Branch DSL Inside Steps
+
+Within `on` and `otherwise` blocks, you can use all step options:
+
+```ruby
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    # Regular step
+    step :premium_feature, with: PremiumService
+
+    # Step with params mapping
+    step :send_premium_email,
+         with: EmailService,
+         params: ->(ctx) {
+           {
+             user_id: ctx.user.id,
+             template: 'premium'
+           }
+         }
+
+    # Conditional step inside branch
+    step :upsell,
+         with: UpsellService,
+         if: ->(ctx) { ctx.premium_feature.eligible_for_upsell? }
+
+    # Step with error handling
+    step :track_usage,
+         with: AnalyticsService,
+         on_error: ->(ctx, err) {
+           logger.warn "Analytics failed: #{err.message}"
+         }
+  end
+end
+```
+
+---
+
+### Branch Metadata
+
+Workflows track which branches execute and include this in the result metadata:
+
+```ruby
+result = MyWorkflow.new(user, params: { ... }).call
+
+result[:metadata][:branches_taken]
+# => ["branch_1:on_2", "nested_branch_1:otherwise"]
+```
+
+**Format:**
+- `"branch_N:on_M"` - Nth branch, Mth condition matched
+- `"branch_N:otherwise"` - Nth branch, otherwise path taken
+- `"nested_branch_N:on_M"` - Nested branch decision
+
+**Example:**
+
+```ruby
+class TestWorkflow < BetterService::Workflow
+  step :validate, with: ValidateService
+
+  # First branch
+  branch do
+    on ->(ctx) { false } do
+      step :path_1
+    end
+
+    on ->(ctx) { true } do  # This matches
+      step :path_2
+
+      # Nested branch
+      branch do
+        on ->(ctx) { false } do
+          step :nested_1
+        end
+
+        otherwise do  # This matches
+          step :nested_2
+        end
+      end
+    end
+  end
+end
+
+result = TestWorkflow.new(user, params: {}).call
+result[:metadata][:branches_taken]
+# => ["branch_1:on_2", "nested_branch_1:otherwise"]
+```
+
+---
+
+### Branch Best Practices
+
+#### 1. Use Descriptive Conditions
+
+```ruby
+# ❌ Bad: Unclear what condition checks
+on ->(ctx) { ctx.x && !ctx.y || ctx.z > 10 } do
+  step :something
+end
+
+# ✅ Good: Extract to method or use clear names
+on ->(ctx) { eligible_for_enterprise_features?(ctx) } do
+  step :enterprise_features
+end
+
+def eligible_for_enterprise_features?(ctx)
+  ctx.user.enterprise? &&
+  ctx.subscription.active? &&
+  ctx.subscription.value > 10_000
+end
+```
+
+#### 2. Always Include Otherwise
+
+```ruby
+# ❌ Bad: Will error if no match
+branch do
+  on ->(ctx) { ctx.type == 'A' } do
+    step :handle_a
+  end
+
+  on ->(ctx) { ctx.type == 'B' } do
+    step :handle_b
+  end
+end
+
+# ✅ Good: Handles unexpected cases
+branch do
+  on ->(ctx) { ctx.type == 'A' } do
+    step :handle_a
+  end
+
+  on ->(ctx) { ctx.type == 'B' } do
+    step :handle_b
+  end
+
+  otherwise do
+    step :handle_unknown
+  end
+end
+```
+
+#### 3. Keep Conditions Simple
+
+```ruby
+# ❌ Bad: Complex logic in condition
+on ->(ctx) {
+  (ctx.user.premium? && ctx.order.total > 100) ||
+  (ctx.user.enterprise? && ctx.has_discount?) ||
+  (ctx.user.admin? && ctx.test_mode?)
+} do
+  step :complex_path
+end
+
+# ✅ Good: Use multiple on blocks
+on ->(ctx) { ctx.user.premium? && ctx.order.total > 100 } do
+  step :premium_high_value
+end
+
+on ->(ctx) { ctx.user.enterprise? && ctx.has_discount? } do
+  step :enterprise_discount
+end
+
+on ->(ctx) { ctx.user.admin? && ctx.test_mode? } do
+  step :admin_test
+end
+```
+
+#### 4. Branch vs Conditional Steps
+
+```ruby
+# ❌ Bad: Branch with single step
+branch do
+  on ->(ctx) { ctx.coupon.present? } do
+    step :apply_coupon
+  end
+end
+
+# ✅ Good: Use conditional step
+step :apply_coupon,
+     if: ->(ctx) { ctx.coupon.present? }
+
+# ✅ Good: Branch when multiple steps per path
+branch do
+  on ->(ctx) { ctx.payment_method == 'card' } do
+    step :validate_card
+    step :charge_card
+    step :store_card_token
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :create_paypal_order
+    step :capture_payment
+  end
+end
+```
+
+---
+
 ## Step Execution Order
 
 Steps execute in the order they are defined:

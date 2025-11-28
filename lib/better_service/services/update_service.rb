@@ -9,20 +9,20 @@ module BetterService
   # Returns: { resource: {}, metadata: { action: :updated } }
   #
   # Example:
-  #   class Bookings::UpdateService < BetterService::Services::UpdateService
+  #   class Orders::UpdateService < BetterService::Services::UpdateService
   #     schema do
   #       required(:id).filled(:integer)
   #       optional(:title).filled(:string)
   #     end
   #
   #     search_with do
-  #       { resource: user.bookings.find(params[:id]) }
+  #       { resource: user.orders.find(params[:id]) }
   #     end
   #
   #     process_with do |data|
-  #       booking = data[:resource]
-  #       booking.update!(params.except(:id))
-  #       { resource: booking }
+  #       order = data[:resource]
+  #       order.update!(params.except(:id))
+  #       { resource: order }
   #     end
   #   end
   class UpdateService < Services::Base

@@ -5,7 +5,7 @@
 ### Clean, powerful Service Objects for Rails
 
 [![Gem Version](https://badge.fury.io/rb/better_service.svg)](https://badge.fury.io/rb/better_service)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/license-WTFPL-blue.svg)](http://www.wtfpl.net/about/)
 
 [Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Usage](#-usage) • [Error Handling](#%EF%B8%8F-error-handling) • [Examples](#-examples)
 
@@ -28,6 +28,7 @@ BetterService is a comprehensive Service Objects framework for Rails that brings
 - 🎨 **Presenter System**: Optional data transformation layer with `BetterService::Presenter` base class
 - 📊 **Metadata Tracking**: Automatic action metadata in all service responses
 - 🔗 **Workflow Composition**: Chain multiple services into pipelines with conditional steps, rollback support, and lifecycle hooks
+- 🌲 **Conditional Branching** (v1.1.0+): Multi-path workflow execution with `branch`/`on`/`otherwise` DSL for clean conditional logic
 - 🏗️ **Powerful Generators**: 10 generators for rapid scaffolding (scaffold, CRUD services, action, workflow, locale, presenter)
 - 📦 **6 Service Types**: Specialized services for different use cases
 - 🎨 **DSL-Based**: Clean, expressive DSL with `search_with`, `process_with`, `authorize_with`, etc.
@@ -1545,7 +1546,7 @@ See [Configuration Guide](docs/start/configuration.md) for more details.
 
 ## 📄 License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+The gem is available as open source under the terms of the [WTFPL License](http://www.wtfpl.net/about/).
 
 ---
 

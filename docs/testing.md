@@ -503,6 +503,124 @@ end
 
 ---
 
+### Testing Workflow Branching
+
+Test that branches take the correct execution path.
+
+```ruby
+test "branches on payment method" do
+  result = Payment::ProcessWorkflow.new(@user, params: {
+    order_id: @order.id,
+    payment_method: 'credit_card'
+  }).call
+
+  assert result[:success]
+  # Verify correct branch was taken
+  assert_includes result[:metadata][:branches_taken], "branch_1:on_1"
+  # Verify correct steps executed
+  assert_includes result[:metadata][:steps_executed], :charge_card
+  assert_not_includes result[:metadata][:steps_executed], :charge_paypal
+end
+```
+
+### Testing Multiple Branch Paths
+
+Test each possible path through a branch.
+
+```ruby
+test "credit card path" do
+  result = Payment::ProcessWorkflow.new(@user, params: {
+    payment_method: 'credit_card'
+  }).call
+
+  assert_equal [:validate, :charge_card, :finalize], result[:metadata][:steps_executed]
+end
+
+test "paypal path" do
+  result = Payment::ProcessWorkflow.new(@user, params: {
+    payment_method: 'paypal'
+  }).call
+
+  assert_equal [:validate, :charge_paypal, :finalize], result[:metadata][:steps_executed]
+end
+
+test "otherwise path" do
+  result = Payment::ProcessWorkflow.new(@user, params: {
+    payment_method: 'unknown'
+  }).call
+
+  assert_equal [:validate, :manual_review, :finalize], result[:metadata][:steps_executed]
+end
+```
+
+### Testing Nested Branches
+
+```ruby
+test "nested branch decisions" do
+  result = Document::ApprovalWorkflow.new(@user, params: {
+    document_id: high_value_contract.id
+  }).call
+
+  assert result[:success]
+  # Verify both outer and inner branch decisions
+  assert_equal 2, result[:metadata][:branches_taken].count
+  assert_includes result[:metadata][:branches_taken], "branch_1:on_1"  # Contract type
+  assert_includes result[:metadata][:branches_taken], "nested_branch_1:on_1"  # High value
+end
+```
+
+### Testing Branch Rollback
+
+Verify only executed branch steps are rolled back.
+
+```ruby
+test "branch failure triggers rollback of executed steps only" do
+  # Stub service to fail in credit card path
+  Payment::ChargeCreditCardService.stub :call, -> { raise "Card declined" } do
+    error = assert_raises(BetterService::Errors::Workflowable::Runtime::WorkflowExecutionError) do
+      Payment::ProcessWorkflow.new(@user, params: {
+        payment_method: 'credit_card'
+      }).call
+    end
+
+    # Verify error from correct branch
+    assert_match /Card declined/, error.message
+    # Verify PayPal steps were not executed (and thus not rolled back)
+  end
+end
+```
+
+### Testing Branch Metadata
+
+```ruby
+test "includes branch metadata in result" do
+  result = Payment::ProcessWorkflow.new(@user, params: {
+    payment_method: 'paypal'
+  }).call
+
+  assert result[:success]
+  assert result[:metadata].key?(:branches_taken)
+  assert_equal ["branch_1:on_2"], result[:metadata][:branches_taken]
+end
+```
+
+### Testing Configuration Errors
+
+```ruby
+test "raises error when no branch matches without otherwise" do
+  workflow = NoBranchMatchWorkflow.new(@user, params: { type: 'unknown' })
+
+  error = assert_raises(BetterService::Errors::Configuration::InvalidConfigurationError) do
+    workflow.call
+  end
+
+  assert_match /No matching branch found/, error.message
+  assert_equal :configuration_error, error.code
+end
+```
+
+---
+
 ## Testing with Caching
 
 ### Test Cache Hit

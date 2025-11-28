@@ -188,6 +188,76 @@ step :charge_payment,
      }
 ```
 
+## Conditional Branching
+
+Workflows support conditional branching for multi-path execution.
+
+### Branch Syntax
+
+```ruby
+class Payment::ProcessWorkflow < BetterService::Workflow
+  step :validate_order, with: Order::ValidateService
+
+  # Branch based on payment method
+  branch do
+    on ->(ctx) { ctx.validate_order.payment_method == 'credit_card' } do
+      step :charge_card, with: Payment::ChargeCreditCardService
+      step :verify_3d, with: Payment::Verify3DSecureService
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'paypal' } do
+      step :charge_paypal, with: Payment::ChargePayPalService
+    end
+
+    otherwise do
+      step :manual_review, with: Payment::ManualReviewService
+    end
+  end
+
+  step :finalize_order, with: Order::FinalizeService
+end
+```
+
+### Branch DSL Methods
+
+- **`branch do ... end`** - Defines a branch group
+- **`on ->(ctx) { condition }`** - Conditional path (first match wins)
+- **`otherwise do ... end`** - Default path if no condition matches
+
+### When to Use Branching
+
+**Use branching when:**
+- Multiple steps per path (2+ steps)
+- Multi-way decisions (3+ paths)
+- Different workflows based on runtime data
+
+**Use conditional steps when:**
+- Single optional step
+- Simple binary condition
+
+```ruby
+# ✅ Good: Use conditional step for single step
+step :apply_discount,
+     with: ApplyDiscountService,
+     if: ->(ctx) { ctx.coupon.present? }
+
+# ✅ Good: Use branching for multiple steps per path
+branch do
+  on ->(ctx) { ctx.user.premium? } do
+    step :premium_feature_1
+    step :premium_feature_2
+  end
+
+  otherwise do
+    step :basic_feature
+  end
+end
+```
+
+See [Workflows Introduction](../workflows/01_workflows_introduction.md#conditional-branching) for more details.
+
+---
+
 ## Complete Examples
 
 ### Example 1: Order Checkout

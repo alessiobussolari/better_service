@@ -11,6 +11,13 @@ module BetterService
   #     config.instrumentation_enabled = true
   #     config.instrumentation_include_args = false
   #     config.instrumentation_excluded_services = ["HealthCheckService"]
+  #
+  #     # Cache invalidation map for cascading cache invalidation
+  #     config.cache_invalidation_map = {
+  #       'products' => %w[products inventory reports],
+  #       'orders' => %w[orders products reports],
+  #       'users' => %w[users orders reports]
+  #     }
   #   end
   class Configuration
     # Enable/disable instrumentation globally
@@ -65,6 +72,31 @@ module BetterService
     # @return [Boolean] Default: false
     attr_accessor :stats_subscriber_enabled
 
+    # Cache invalidation map for cascading cache invalidation
+    #
+    # When a context is invalidated, all related contexts in the map
+    # are also invalidated automatically.
+    #
+    # @return [Hash<String, Array<String>>] Default: {}
+    #
+    # @example
+    #   config.cache_invalidation_map = {
+    #     'products' => %w[products inventory reports],
+    #     'orders' => %w[orders products reports]
+    #   }
+    attr_reader :cache_invalidation_map
+
+    # Set the cache invalidation map
+    #
+    # Automatically configures CacheService with the provided map.
+    #
+    # @param map [Hash<String, Array<String>>] Invalidation mappings
+    # @return [void]
+    def cache_invalidation_map=(map)
+      @cache_invalidation_map = map
+      CacheService.configure_invalidation_map(map) if map
+    end
+
     def initialize
       # Instrumentation defaults
       @instrumentation_enabled = true
@@ -76,6 +108,9 @@ module BetterService
       @log_subscriber_enabled = false
       @log_subscriber_level = :info
       @stats_subscriber_enabled = false
+
+      # Cache defaults
+      @cache_invalidation_map = {}
     end
   end
 

@@ -7,6 +7,9 @@ module BetterService
   # the Cacheable concern. It provides methods to invalidate cache keys
   # for specific users, contexts, or globally.
   #
+  # Supports cascading invalidation through INVALIDATION_MAP - when a context
+  # is invalidated, all related contexts are also invalidated automatically.
+  #
   # @example Invalidate cache for a specific context and user
   #   BetterService::CacheService.invalidate_for_context(current_user, "products")
   #
@@ -15,61 +18,169 @@ module BetterService
   #
   # @example Invalidate all cache for a user
   #   BetterService::CacheService.invalidate_for_user(current_user)
+  #
+  # @example Configure invalidation map
+  #   BetterService::CacheService.configure_invalidation_map(
+  #     'products' => %w[products inventory reports],
+  #     'orders' => %w[orders products reports]
+  #   )
   class CacheService
+    # Default invalidation map - can be customized via configure_invalidation_map
+    # Maps primary context to array of contexts that should be invalidated together
+    #
+    # @return [Hash<String, Array<String>>] Context invalidation mappings
+    @invalidation_map = {}
+
     class << self
+      # Get the current invalidation map
+      #
+      # @return [Hash<String, Array<String>>] Current invalidation mappings
+      attr_reader :invalidation_map
+
+      # Configure the invalidation map for cascading cache invalidation
+      #
+      # The invalidation map defines which cache contexts should be invalidated
+      # together. When a primary context is invalidated, all related contexts
+      # in the map are also invalidated.
+      #
+      # @param map [Hash<String, Array<String>>] Invalidation mappings
+      # @return [void]
+      #
+      # @example Configure invalidation relationships
+      #   BetterService::CacheService.configure_invalidation_map(
+      #     'products' => %w[products inventory reports],
+      #     'orders' => %w[orders products reports],
+      #     'users' => %w[users orders reports],
+      #     'categories' => %w[categories products reports],
+      #     'inventory' => %w[inventory products reports]
+      #   )
+      def configure_invalidation_map(map)
+        @invalidation_map = map.transform_keys(&:to_s).transform_values do |contexts|
+          Array(contexts).map(&:to_s)
+        end.freeze
+      end
+
+      # Add entries to the invalidation map without replacing existing ones
+      #
+      # @param entries [Hash<String, Array<String>>] New invalidation mappings to add
+      # @return [void]
+      #
+      # @example Add new context invalidation rules
+      #   BetterService::CacheService.add_invalidation_rules(
+      #     'payments' => %w[payments statistics invoices]
+      #   )
+      def add_invalidation_rules(entries)
+        new_entries = entries.transform_keys(&:to_s).transform_values do |contexts|
+          Array(contexts).map(&:to_s)
+        end
+        @invalidation_map = (@invalidation_map || {}).merge(new_entries).freeze
+      end
+
+      # Get all contexts that should be invalidated for a given context
+      #
+      # If the context exists in the invalidation map, returns all mapped contexts.
+      # Otherwise, returns an array containing just the original context.
+      #
+      # @param context [String, Symbol] The primary context
+      # @return [Array<String>] All contexts to invalidate
+      #
+      # @example
+      #   contexts_for('products')  # => ['products', 'inventory', 'reports']
+      #   contexts_for('unknown')   # => ['unknown']
+      def contexts_to_invalidate(context)
+        context_str = context.to_s
+        (@invalidation_map || {})[context_str] || [context_str]
+      end
+
       # Invalidate cache for a specific context and user
       #
       # Deletes all cache keys that match the pattern for the given user and context.
+      # Uses cascading invalidation - if the context exists in the invalidation map,
+      # all related contexts will also be invalidated.
+      #
       # This is useful when data changes that affects a specific user's cached results.
       #
       # @param user [Object] The user whose cache should be invalidated
       # @param context [String] The context name (e.g., "products", "sidebar")
       # @param async [Boolean] Whether to perform invalidation asynchronously
+      # @param cascade [Boolean] Whether to use cascading invalidation (default: true)
       # @return [Integer] Number of keys deleted (if supported by cache store)
       #
-      # @example
+      # @example Basic invalidation
       #   # After creating a product, invalidate products cache for user
       #   BetterService::CacheService.invalidate_for_context(user, "products")
-      def invalidate_for_context(user, context, async: false)
+      #
+      # @example With cascading (if map configured for orders -> [orders, products, reports])
+      #   BetterService::CacheService.invalidate_for_context(user, "orders")
+      #   # Invalidates: orders, products, reports caches
+      #
+      # @example Without cascading
+      #   BetterService::CacheService.invalidate_for_context(user, "orders", cascade: false)
+      #   # Invalidates: only orders cache
+      def invalidate_for_context(user, context, async: false, cascade: true)
         return 0 unless user && context && !context.to_s.strip.empty?
 
-        pattern = build_user_context_pattern(user, context)
+        # Get all contexts to invalidate (cascading or single)
+        contexts = cascade ? contexts_to_invalidate(context) : [context.to_s]
+        total_deleted = 0
 
-        if async
-          invalidate_async(pattern)
-          0
-        else
-          result = delete_matched(pattern)
-          # Ensure we return Integer, not Array
-          result.is_a?(Array) ? result.size : (result || 0)
+        contexts.each do |ctx|
+          pattern = build_user_context_pattern(user, ctx)
+
+          if async
+            invalidate_async(pattern)
+          else
+            result = delete_matched(pattern)
+            count = result.is_a?(Array) ? result.size : (result || 0)
+            total_deleted += count
+          end
         end
+
+        log_cascading_invalidation(context, contexts) if cascade && contexts.size > 1
+        total_deleted
       end
 
       # Invalidate cache globally for a context
       #
       # Deletes all cache keys for the given context across all users.
+      # Uses cascading invalidation - if the context exists in the invalidation map,
+      # all related contexts will also be invalidated.
+      #
       # This is useful when data changes that affects everyone (e.g., global settings).
       #
       # @param context [String] The context name
       # @param async [Boolean] Whether to perform invalidation asynchronously
+      # @param cascade [Boolean] Whether to use cascading invalidation (default: true)
       # @return [Integer] Number of keys deleted (if supported by cache store)
       #
-      # @example
+      # @example Basic global invalidation
       #   # After updating global sidebar settings
       #   BetterService::CacheService.invalidate_global("sidebar")
-      def invalidate_global(context, async: false)
+      #
+      # @example With cascading
+      #   BetterService::CacheService.invalidate_global("orders")
+      #   # Invalidates: orders, products, reports caches globally
+      def invalidate_global(context, async: false, cascade: true)
         return 0 unless context && !context.to_s.strip.empty?
 
-        pattern = build_global_context_pattern(context)
+        # Get all contexts to invalidate (cascading or single)
+        contexts = cascade ? contexts_to_invalidate(context) : [context.to_s]
+        total_deleted = 0
 
-        if async
-          invalidate_async(pattern)
-          0
-        else
-          result = delete_matched(pattern)
-          # Ensure we return Integer, not Array
-          result.is_a?(Array) ? result.size : (result || 0)
+        contexts.each do |ctx|
+          pattern = build_global_context_pattern(ctx)
+
+          if async
+            invalidate_async(pattern)
+          else
+            result = delete_matched(pattern)
+            count = result.is_a?(Array) ? result.size : (result || 0)
+            total_deleted += count
+          end
         end
+
+        log_cascading_invalidation(context, contexts, global: true) if cascade && contexts.size > 1
+        total_deleted
       end
 
       # Invalidate all cache for a specific user
@@ -175,7 +286,9 @@ module BetterService
         {
           cache_store: Rails.cache.class.name,
           supports_pattern_deletion: supports_delete_matched?,
-          supports_async: defined?(ActiveJob) ? true : false
+          supports_async: defined?(ActiveJob) ? true : false,
+          invalidation_map_configured: (@invalidation_map || {}).any?,
+          invalidation_map_contexts: (@invalidation_map || {}).keys
         }
       end
 
@@ -287,6 +400,20 @@ module BetterService
         return unless defined?(Rails) && Rails.logger
 
         Rails.logger.warn "[BetterService::CacheService] #{message}"
+      end
+
+      # Log cascading invalidation
+      #
+      # @param primary_context [String] The primary context that triggered invalidation
+      # @param all_contexts [Array<String>] All contexts that were invalidated
+      # @param global [Boolean] Whether this was a global invalidation
+      # @return [void]
+      def log_cascading_invalidation(primary_context, all_contexts, global: false)
+        return unless defined?(Rails) && Rails.logger
+
+        scope = global ? "globally" : "for user"
+        Rails.logger.info "[BetterService::CacheService] Cascading invalidation #{scope}: " \
+                          "'#{primary_context}' -> [#{all_contexts.join(', ')}]"
       end
     end
 

@@ -42,6 +42,52 @@ module BetterService
           self._steps += [ step ]
         end
 
+        # DSL method to define conditional branches in the workflow
+        #
+        # Creates a branch group that allows multiple conditional execution paths.
+        # Only one branch will be executed based on the first matching condition.
+        #
+        # @param block [Proc] Block containing branch definitions (on/otherwise)
+        #
+        # @example Define conditional branches
+        #   branch do
+        #     on ->(ctx) { ctx.user.premium? } do
+        #       step :premium_feature, with: PremiumService
+        #     end
+        #
+        #     on ->(ctx) { ctx.user.basic? } do
+        #       step :basic_feature, with: BasicService
+        #     end
+        #
+        #     otherwise do
+        #       step :default_feature, with: DefaultService
+        #     end
+        #   end
+        def branch(&block)
+          raise ArgumentError, "Block required for 'branch'" unless block_given?
+
+          # Count existing branch groups to determine index
+          branch_count = _steps.count { |s| s.is_a?(BranchGroup) }
+
+          # Create branch group
+          branch_group = BranchGroup.new(name: :"branch_#{branch_count + 1}")
+
+          # Create DSL context and evaluate block
+          branch_dsl = BranchDSL.new(branch_group)
+          branch_dsl.instance_eval(&block)
+
+          # Validate: must have at least one branch (conditional or default)
+          if branch_group.branches.empty? && branch_group.default_branch.nil?
+            raise Errors::Configuration::InvalidConfigurationError.new(
+              "Branch group must contain at least one 'on' or 'otherwise' block",
+              code: ErrorCodes::CONFIGURATION_ERROR
+            )
+          end
+
+          # Add branch group to steps
+          self._steps += [ branch_group ]
+        end
+
         # Enable or disable database transactions for the entire workflow
         #
         # @param enabled [Boolean] Whether to use transactions

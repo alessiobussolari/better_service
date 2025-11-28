@@ -8,7 +8,7 @@ module BetterService
     #
     # Usage:
     #   rails generate better_service:locale products
-    #   rails generate better_service:locale bookings
+    #   rails generate better_service:locale orders
     #
     # This generates config/locales/products_services.en.yml with scaffolded
     # translations for common service actions (create, update, destroy, etc.)

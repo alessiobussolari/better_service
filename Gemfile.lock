@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    better_service (1.0.0)
+    better_service (1.1.0)
       dry-schema (~> 1.13)
-      rails (>= 8.1.1)
+      rails (~> 8.1, >= 8.1.1)
 
 GEM
   remote: https://rubygems.org/

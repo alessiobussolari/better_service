@@ -238,6 +238,244 @@ ActiveRecord::Base.transaction do
 end
 ```
 
+## Conditional Branching
+
+### Overview
+
+Workflows support **conditional branching** - executing different steps based on runtime conditions. This enables workflows to handle multiple execution paths without creating separate workflow classes.
+
+**Think of it like:**
+- A decision tree where you choose a path
+- A "choose your own adventure" for business logic
+- A switch statement for workflow execution
+
+### Basic Branch Example
+
+```ruby
+class Order::ProcessPaymentWorkflow < BetterService::Workflow
+  step :validate_order, with: Order::ValidateService
+
+  # Branch based on payment method
+  branch do
+    on ->(ctx) { ctx.validate_order.payment_method == 'credit_card' } do
+      step :charge_credit_card, with: Payment::ChargeCreditCardService
+      step :verify_3d_secure, with: Payment::Verify3DSecureService
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'paypal' } do
+      step :charge_paypal, with: Payment::ChargePayPalService
+    end
+
+    on ->(ctx) { ctx.validate_order.payment_method == 'bank_transfer' } do
+      step :generate_reference, with: Payment::GenerateReferenceService
+      step :send_instructions, with: Email::BankInstructionsService
+    end
+
+    otherwise do
+      step :manual_review, with: Payment::ManualReviewService
+    end
+  end
+
+  step :finalize_order, with: Order::FinalizeService
+end
+```
+
+### How Branching Works
+
+**1. Branch Declaration**
+
+Define a branch block with `branch do ... end`:
+
+```ruby
+branch do
+  # Conditional paths go here
+end
+```
+
+**2. Conditional Paths**
+
+Use `on` blocks to define conditions:
+
+```ruby
+on ->(ctx) { condition } do
+  step :some_step, with: SomeService
+end
+```
+
+**3. Default Path**
+
+Use `otherwise` for the default path:
+
+```ruby
+otherwise do
+  step :default_step, with: DefaultService
+end
+```
+
+**4. Execution Rules**
+
+- **First-match wins**: Conditions evaluated in order, first true executes
+- **Single path**: Only one branch executes per branch block
+- **Otherwise is optional**: But without it, error raised if no condition matches
+- **Access to context**: Conditions receive full workflow context
+
+### Branch Execution Example
+
+```ruby
+# User is premium
+context = { user: #<User premium: true> }
+
+branch do
+  on ->(ctx) { ctx.user.premium? } do     # ✅ This executes
+    step :premium_feature
+  end
+
+  on ->(ctx) { ctx.user.free? } do        # ⏭️ Skipped (first match won)
+    step :free_feature
+  end
+
+  otherwise do                             # ⏭️ Skipped (match found)
+    step :default_feature
+  end
+end
+```
+
+### Nested Branches
+
+Branches can contain other branches for complex decision trees:
+
+```ruby
+class Document::ApprovalWorkflow < BetterService::Workflow
+  step :validate_document, with: Document::ValidateService
+
+  branch do
+    on ->(ctx) { ctx.validate_document.type == 'contract' } do
+      step :legal_review, with: Legal::ReviewService
+
+      # Nested branch based on contract value
+      branch do
+        on ->(ctx) { ctx.validate_document.value > 100_000 } do
+          step :ceo_approval, with: Approval::CEOService
+        end
+
+        on ->(ctx) { ctx.validate_document.value > 10_000 } do
+          step :manager_approval, with: Approval::ManagerService
+        end
+
+        otherwise do
+          step :supervisor_approval, with: Approval::SupervisorService
+        end
+      end
+    end
+
+    on ->(ctx) { ctx.validate_document.type == 'invoice' } do
+      step :finance_approval, with: Approval::FinanceService
+    end
+
+    otherwise do
+      step :standard_approval, with: Approval::StandardService
+    end
+  end
+
+  step :finalize_document, with: Document::FinalizeService
+end
+```
+
+### Branch Metadata
+
+Workflow results include `branches_taken` metadata showing which branches executed:
+
+```ruby
+result = Order::ProcessPaymentWorkflow.new(user, params: { ... }).call
+
+result[:metadata]
+# => {
+#   workflow: "Order::ProcessPaymentWorkflow",
+#   steps_executed: [:validate_order, :charge_credit_card, :verify_3d_secure, :finalize_order],
+#   branches_taken: ["branch_1:on_1"],  # First branch, first condition
+#   duration_ms: 1234.56
+# }
+```
+
+For nested branches:
+
+```ruby
+result[:metadata][:branches_taken]
+# => ["branch_1:on_1", "nested_branch_1:on_2"]
+# First branch took first condition, nested branch took second condition
+```
+
+### Branch Rollback
+
+When a step fails in a branch:
+- **Only executed steps are rolled back** (not skipped or non-executed branch steps)
+- **Rollback executes in reverse order**
+- **Database transaction rolls back** all changes
+
+```ruby
+branch do
+  on ->(ctx) { ctx.payment_method == 'credit_card' } do
+    step :charge_card     # ✅ Executed
+    step :verify_3d       # ❌ FAILS
+    # Only these two steps rolled back
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :charge_paypal   # ⏭️ Never executed, won't be rolled back
+  end
+end
+```
+
+### When to Use Branching
+
+**Use branching when:**
+- Different execution paths based on runtime data
+- Payment method routing (credit card vs PayPal vs bank transfer)
+- User tier features (free vs premium vs enterprise)
+- Content type processing (video vs image vs document)
+- Approval workflows (different approvers based on amount/type)
+
+**Don't use branching when:**
+- Simple conditional steps with `if` are enough
+- Only 1-2 conditional steps needed
+- Branches would have exactly the same steps
+
+### Branching vs Conditional Steps
+
+```ruby
+# ❌ DON'T use branching for simple conditions
+branch do
+  on ->(ctx) { ctx.coupon_code.present? } do
+    step :apply_coupon, with: ApplyCouponService
+  end
+end
+
+# ✅ DO use conditional step instead
+step :apply_coupon,
+     with: ApplyCouponService,
+     if: ->(ctx) { ctx.coupon_code.present? }
+
+# ✅ DO use branching for multiple different paths
+branch do
+  on ->(ctx) { ctx.payment_method == 'credit_card' } do
+    step :charge_card
+    step :verify_3d
+    step :store_card
+  end
+
+  on ->(ctx) { ctx.payment_method == 'paypal' } do
+    step :create_paypal_order
+    step :capture_payment
+  end
+
+  otherwise do
+    step :manual_processing
+  end
+end
+```
+
+---
+
 ## Workflow Anatomy
 
 ```ruby

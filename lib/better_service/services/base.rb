@@ -298,6 +298,103 @@ module BetterService
       }
     end
 
+    # Build a failure response hash
+    #
+    # @param error_message [String] Human-readable error message
+    # @param errors [Hash, Array] Validation errors in various formats
+    # @return [Hash] Standardized failure response
+    #
+    # @example Simple error
+    #   failure_result("Record not found")
+    #
+    # @example With validation errors
+    #   failure_result("Validation failed", { email: ["is invalid"] })
+    def failure_result(error_message, errors = {})
+      {
+        success: false,
+        error: error_message,
+        errors: format_errors_for_response(errors)
+      }
+    end
+
+    # Build a validation failure response with the failed resource
+    #
+    # Used when ActiveRecord validation fails and the form
+    # needs to be re-rendered with the invalid model.
+    #
+    # @param failed_resource [ActiveRecord::Base] Model with validation errors
+    # @return [Hash] Failure response with errors and failed_resource
+    #
+    # @example
+    #   user = User.new(invalid_params)
+    #   user.valid? # => false
+    #   validation_failure_result(user)
+    def validation_failure_result(failed_resource)
+      {
+        success: false,
+        errors: format_model_validation_errors(failed_resource.errors),
+        failed_resource: failed_resource
+      }
+    end
+
+    # Check if data contains an error (for phase flow control)
+    #
+    # @param data [Hash] Data from previous phase
+    # @return [Boolean] true if data contains error
+    #
+    # @example
+    #   def process(data)
+    #     return data if error?(data)  # Pass through errors
+    #     # ... processing logic
+    #   end
+    def error?(data)
+      data.is_a?(Hash) && (data[:error] || data[:success] == false)
+    end
+
+    # Format errors into standard array format
+    #
+    # @param errors [Hash, Array] Errors in various formats
+    # @return [Array<Hash>] Standardized error array
+    def format_errors_for_response(errors)
+      case errors
+      when Hash
+        errors.flat_map do |key, messages|
+          Array(messages).map { |msg| { key: key.to_s, message: msg } }
+        end
+      when Array
+        errors.map do |err|
+          if err.is_a?(Hash) && err[:key] && err[:message]
+            err
+          elsif err.is_a?(String)
+            { key: "base", message: err }
+          else
+            { key: "base", message: err.to_s }
+          end
+        end
+      else
+        []
+      end
+    end
+
+    # Format ActiveRecord/ActiveModel errors into standard format
+    #
+    # Used specifically for ActiveModel::Errors objects (from Rails models).
+    # For Dry::Schema validation errors, the Validatable concern has its own
+    # format_validation_errors method.
+    #
+    # @param errors [ActiveModel::Errors] ActiveRecord errors object
+    # @return [Array<Hash>] Standardized error array
+    def format_model_validation_errors(errors)
+      return [] if errors.blank?
+
+      errors.map do |error|
+        {
+          key: error.attribute.to_s,
+          message: error.message
+        }
+      end
+    end
+
     # Prepend Instrumentation at the end, after call method is defined
     # This wraps the entire call method (including cache logic from Cacheable)
     prepend Concerns::Instrumentation

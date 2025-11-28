@@ -9,19 +9,19 @@ module BetterService
   # Returns: { resource: {}, metadata: { action: :deleted } }
   #
   # Example:
-  #   class Bookings::DestroyService < BetterService::Services::DestroyService
+  #   class Orders::DestroyService < BetterService::Services::DestroyService
   #     schema do
   #       required(:id).filled(:integer)
   #     end
   #
   #     search_with do
-  #       { resource: user.bookings.find(params[:id]) }
+  #       { resource: user.orders.find(params[:id]) }
   #     end
   #
   #     process_with do |data|
-  #       booking = data[:resource]
-  #       booking.destroy!
-  #       { resource: booking }
+  #       order = data[:resource]
+  #       order.destroy!
+  #       { resource: order }
   #     end
   #   end
   class DestroyService < Services::Base

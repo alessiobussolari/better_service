@@ -9,21 +9,21 @@ module BetterService
   # Returns: { resource: {}, metadata: { action: :custom_action_name } }
   #
   # Example:
-  #   class Bookings::AcceptService < BetterService::Services::ActionService
-  #     action_name :accepted  # Sets metadata action
+  #   class Orders::ConfirmService < BetterService::Services::ActionService
+  #     action_name :confirmed  # Sets metadata action
   #
   #     schema do
   #       required(:id).filled(:integer)
   #     end
   #
   #     search_with do
-  #       { resource: user.bookings.find(params[:id]) }
+  #       { resource: user.orders.find(params[:id]) }
   #     end
   #
   #     process_with do |data|
-  #       booking = data[:resource]
-  #       booking.update!(status: 'accepted', accepted_at: Time.current)
-  #       { resource: booking }
+  #       order = data[:resource]
+  #       order.update!(status: 'confirmed', confirmed_at: Time.current)
+  #       { resource: order }
   #     end
   #   end
   class ActionService < Services::Base

@@ -9,9 +9,9 @@ module BetterService
   # Returns: { items: [], metadata: { action: :index, stats: {}, pagination: {} } }
   #
   # Example:
-  #   class Bookings::IndexService < BetterService::Services::IndexService
+  #   class Orders::IndexService < BetterService::Services::IndexService
   #     search_with do
-  #       { items: user.bookings.to_a }
+  #       { items: user.orders.to_a }
   #     end
   #
   #     process_with do |data|

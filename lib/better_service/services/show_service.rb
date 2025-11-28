@@ -9,9 +9,9 @@ module BetterService
   # Returns: { resource: {}, metadata: { action: :show } }
   #
   # Example:
-  #   class Bookings::ShowService < BetterService::Services::ShowService
+  #   class Orders::ShowService < BetterService::Services::ShowService
   #     search_with do
-  #       { resource: user.bookings.find(params[:id]) }
+  #       { resource: user.orders.find(params[:id]) }
   #     end
   #   end
   class ShowService < Services::Base

@@ -48,6 +48,28 @@ class <%= workflow_class_name %> < BetterService::Workflow
   #      input: ->(ctx) { { resource_id: ctx.resource.id } },
   #      optional: true,
   #      if: ->(ctx) { ctx.user.notifications_enabled? }
+  #
+  # Conditional branching (NEW):
+  #
+  # branch do
+  #   on ->(ctx) { ctx.user.premium? } do
+  #     step :premium_feature,
+  #          with: <%= class_name %>::PremiumService,
+  #          input: ->(ctx) { { resource: ctx.resource } }
+  #   end
+  #
+  #   on ->(ctx) { ctx.user.basic? } do
+  #     step :basic_feature,
+  #          with: <%= class_name %>::BasicService,
+  #          input: ->(ctx) { { resource: ctx.resource } }
+  #   end
+  #
+  #   otherwise do
+  #     step :default_feature,
+  #          with: <%= class_name %>::DefaultService,
+  #          input: ->(ctx) { { resource: ctx.resource } }
+  #   end
+  # end
 
 <% end -%>
   private
