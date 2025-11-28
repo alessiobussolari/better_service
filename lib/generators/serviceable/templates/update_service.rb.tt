@@ -2,45 +2,18 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>::UpdateService < <%= parent_class %>
-<% if using_base_service? -%>
-  # Action name for metadata (required when inheriting from BaseService)
-  self._action_name = :updated
+  # Action name for metadata
+  performed_action :updated
 
   # Enable transaction wrapping
   with_transaction true
 
-<% else -%>
-  # Database transactions are ENABLED by default for update operations
-  # The process block will automatically run inside a transaction
-  # To disable: with_transaction false
-
-<% end -%>
   # Schema for validating params
   schema do
     required(:id).filled
     # Add your optional attributes here
   end
 
-<% unless using_base_service? -%>
-  # Authorization (optional) - Runs BEFORE search phase
-  # Uncomment and customize for your needs:
-  #
-  # authorize_with do
-  #   # Example 1: Simple role check
-  #   user.admin?
-  #
-  #   # Example 2: Resource ownership check
-  #   <%= file_name %> = <%= class_name %>.find(params[:id])
-  #   <%= file_name %>.user_id == user.id
-  #
-  #   # Example 3: Pundit integration
-  #   <%= class_name %>Policy.new(user, <%= class_name %>.find(params[:id])).update?
-  #
-  #   # Example 4: CanCanCan integration
-  #   Ability.new(user).can?(:update, :<%= file_name %>)
-  # end
-
-<% end -%>
   # Phase 1: Search - Load the resource
   search_with do
 <% if using_base_service? -%>
@@ -62,18 +35,6 @@ class <%= class_name %>::UpdateService < <%= parent_class %>
   end
 
   # Phase 4: Respond - Format response
-<% unless using_base_service? -%>
-  # Uses I18n message helper with fallback to default messages
-  #
-  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
-  #   en:
-  #     <%= plural_table_name %>:
-  #       services:
-  #         update:
-  #           success: "<%= human_name %> updated successfully!"
-  #
-  # Then configure namespace: messages_namespace :<%= plural_table_name %>
-<% end -%>
   respond_with do |data|
     success_result(message("update.success"), data)
   end

@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name        = "better_service"
   spec.version     = BetterService::VERSION
   spec.authors     = [ "alessiobussolari" ]
-  spec.email       = [ "alessio@cosmic.tech" ]
+  spec.email       = [ "alessio.bussolari@pandev.it" ]
   spec.homepage    = "https://github.com/alessiobussolari/better_service"
   spec.summary     = "DSL-based Service Objects framework for Rails"
   spec.description = "A powerful DSL-based framework for building Service Objects in Rails with built-in support for validation, caching, presenters, and more."

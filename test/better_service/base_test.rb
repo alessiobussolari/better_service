@@ -170,7 +170,7 @@ module BetterService
 
     test "success_result includes metadata with action when action_name is set" do
       service_class = Class.new(Services::Base) do
-        self._action_name = :test_action
+        performed_action :test_action
       end
       service = service_class.new(@user)
       result = service.send(:success_result, "Success", { data: "value" })
@@ -195,7 +195,7 @@ module BetterService
 
     test "success_result merges additional metadata if provided" do
       service_class = Class.new(Services::Base) do
-        self._action_name = :test_action
+        performed_action :test_action
       end
       service = service_class.new(@user)
       result = service.send(:success_result, "Success", {

@@ -2,35 +2,17 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>::DestroyService < <%= parent_class %>
-<% if using_base_service? -%>
-  # Action name for metadata (required when inheriting from BaseService)
-  self._action_name = :destroyed
+  # Action name for metadata
+  performed_action :destroyed
 
   # Enable transaction wrapping
   with_transaction true
 
-<% else -%>
-  # Database transactions are ENABLED by default for destroy operations
-  # The process block will automatically run inside a transaction
-  # To disable: with_transaction false
-
-<% end -%>
   # Schema for validating params
   schema do
     required(:id).filled
   end
 
-<% unless using_base_service? -%>
-  # Authorization (optional) - Runs BEFORE search phase
-  # Uncomment and customize for your needs:
-  #
-  # authorize_with do
-  #   # Example: Check ownership or admin role
-  #   <%= file_name %> = <%= class_name %>.find(params[:id])
-  #   user.admin? || <%= file_name %>.user_id == user.id
-  # end
-
-<% end -%>
   # Phase 1: Search - Load the resource
   search_with do
 <% if using_base_service? -%>
@@ -52,18 +34,6 @@ class <%= class_name %>::DestroyService < <%= parent_class %>
   end
 
   # Phase 4: Respond - Format response
-<% unless using_base_service? -%>
-  # Uses I18n message helper with fallback to default messages
-  #
-  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
-  #   en:
-  #     <%= plural_table_name %>:
-  #       services:
-  #         destroy:
-  #           success: "<%= human_name %> deleted successfully!"
-  #
-  # Then configure namespace: messages_namespace :<%= plural_table_name %>
-<% end -%>
   respond_with do |data|
     success_result(message("destroy.success"), data)
   end

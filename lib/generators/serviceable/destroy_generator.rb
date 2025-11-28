@@ -27,7 +27,7 @@ module Serviceable
       end
 
       def parent_class
-        options[:base_class] || "BetterService::Services::DestroyService"
+        options[:base_class] || "BetterService::Services::Base"
       end
 
       def using_base_service?

@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 module Booking
-  class IndexService < BetterService::Services::IndexService
+  class IndexService < BetterService::Services::Base
+    # Action name for metadata
+    performed_action :listed
+
     # Schema validation for params
     schema do
       optional(:page).filled(:integer, gteq?: 1)

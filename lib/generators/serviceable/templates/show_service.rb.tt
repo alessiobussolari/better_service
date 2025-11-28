@@ -2,20 +2,9 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>::ShowService < <%= parent_class %>
-<% if using_base_service? -%>
-  # Action name for metadata (required when inheriting from BaseService)
-  self._action_name = :showed
+  # Action name for metadata
+  performed_action :showed
 
-<% else -%>
-  # Optional: Use a presenter to format response data
-  # Generate with: rails generate better_service:presenter <%= class_name %>
-  #
-  # presenter <%= class_name %>Presenter
-  # presenter_options do
-  #   { current_user: user }
-  # end
-
-<% end -%>
   # Schema for validating params
   schema do
     required(:id).filled
@@ -31,18 +20,6 @@ class <%= class_name %>::ShowService < <%= parent_class %>
   end
 
   # Phase 4: Respond - Format response
-<% unless using_base_service? -%>
-  # Uses I18n message helper with fallback to default messages
-  #
-  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
-  #   en:
-  #     <%= plural_table_name %>:
-  #       services:
-  #         show:
-  #           success: "<%= human_name %> loaded successfully!"
-  #
-  # Then configure namespace: messages_namespace :<%= plural_table_name %>
-<% end -%>
   respond_with do |data|
     success_result(message("show.success"), data)
   end

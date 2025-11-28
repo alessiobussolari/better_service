@@ -288,9 +288,11 @@ class RepositoryManualTest
         Product.create!(name: "Visible 2", price: 20.00, published: true, user: user)
         Product.create!(name: "Hidden", price: 30.00, published: false, user: user)
 
-        service_class = Class.new(BetterService::Services::IndexService) do
+        service_class = Class.new(BetterService::Services::Base) do
           include BetterService::Concerns::Serviceable::RepositoryAware
           repository :product, class_name: "ProductRepository"
+
+          performed_action :listed
 
           search_with do
             { items: product_repository.published.to_a }
@@ -309,9 +311,12 @@ class RepositoryManualTest
       # Test 2: CreateService with Repository
       puts "\n  Test 4.2: CreateService with Repository".yellow
       result2 = run_test do
-        service_class = Class.new(BetterService::Services::CreateService) do
+        service_class = Class.new(BetterService::Services::Base) do
           include BetterService::Concerns::Serviceable::RepositoryAware
           repository :product, class_name: "ProductRepository"
+
+          performed_action :created
+          with_transaction true
 
           schema do
             required(:name).filled(:string)
@@ -361,11 +366,13 @@ class RepositoryManualTest
       # Test 1: Service with Multiple Repositories
       puts "\n  Test 5.1: Dashboard Service with Multiple Repos".yellow
       result1 = run_test do
-        service_class = Class.new(BetterService::Services::IndexService) do
+        service_class = Class.new(BetterService::Services::Base) do
           include BetterService::Concerns::Serviceable::RepositoryAware
           repository :product, class_name: "ProductRepository"
           repository :booking, class_name: "BookingRepository"
           repository :user_repo, class_name: "UserRepository", as: :users
+
+          performed_action :listed
 
           search_with do
             {

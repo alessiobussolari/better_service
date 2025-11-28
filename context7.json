@@ -50,7 +50,7 @@
     "ALWAYS use DSL methods: process_with do |data|, search_with do, respond_with do |data| - NEVER use def process(data), def search, def respond",
     "NEVER call services from within other services - ALWAYS use workflows for multi-service operations to ensure automatic rollback",
     "All services follow 5-phase flow: Validation (schema) → Authorization (authorize_with) → Search (search_with) → Process (process_with) → Transform (presenter) → Respond (respond_with)",
-    "6 service types: IndexService (lists, returns :items), ShowService (single resource, returns :resource), CreateService (creation, transactional, returns :resource), UpdateService (updates, transactional, returns :resource), DestroyService (deletion, transactional, returns :resource), ActionService (custom operations, configurable transaction)",
+    "Single base service (BetterService::Services::Base) - all services (CRUD and custom actions) inherit from resource-specific BaseService. Generated services use performed_action :symbol DSL for metadata (:listed, :showed, :created, :updated, :destroyed, or custom like :publish) and with_transaction true for Create/Update/Destroy",
     "Schema validation uses Dry::Schema - always define schema do block with required/optional fields, use type validations, custom rules with rule(:field) do",
     "Authorization with authorize_with do block - check user permissions, resource ownership, or business rules - raises AuthorizationError if false",
     "Transactions are automatic for Create/Update/Destroy services (self._transactional = true by default) - everything rolls back on error",

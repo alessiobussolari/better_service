@@ -2,19 +2,12 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>::CreateService < <%= parent_class %>
-<% if using_base_service? -%>
-  # Action name for metadata (required when inheriting from BaseService)
-  self._action_name = :created
+  # Action name for metadata
+  performed_action :created
 
-  # Enable transaction wrapping (inherited from BetterService but explicit here)
+  # Enable transaction wrapping
   with_transaction true
 
-<% else -%>
-  # Database transactions are ENABLED by default for create operations
-  # The process block will automatically run inside a transaction
-  # To disable: with_transaction false
-
-<% end -%>
   # Schema for validating params
   schema do
     # Add your required attributes here
@@ -39,18 +32,6 @@ class <%= class_name %>::CreateService < <%= parent_class %>
   end
 
   # Phase 4: Respond - Format response
-<% unless using_base_service? -%>
-  # Uses I18n message helper with fallback to default messages
-  #
-  # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
-  #   en:
-  #     <%= plural_table_name %>:
-  #       services:
-  #         create:
-  #           success: "<%= human_name %> created successfully!"
-  #
-  # Then configure namespace: messages_namespace :<%= plural_table_name %>
-<% end -%>
   respond_with do |data|
     success_result(message("create.success"), data)
   end

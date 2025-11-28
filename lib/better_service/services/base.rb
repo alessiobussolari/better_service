@@ -65,6 +65,24 @@ module BetterService
       self._allow_nil_user = value
     end
 
+    # Configure the action name for metadata tracking
+    #
+    # @param name [Symbol, String] The action name (e.g., :publish, :approve)
+    # @return [void]
+    #
+    # @example Custom action service
+    #   class Order::ApproveService < Order::BaseService
+    #     performed_action :approve
+    #   end
+    #
+    # @example CRUD service with standard action
+    #   class Product::CreateService < Product::BaseService
+    #     performed_action :created
+    #   end
+    def self.performed_action(name)
+      self._action_name = name.to_sym
+    end
+
     def self.search_with(&block)
       self._search_block = block
     end

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
-class Article::IndexService < BetterService::Services::IndexService
+class Article::IndexService < BetterService::Services::Base
+  # Action name for metadata
+  performed_action :listed
+
   # Schema for validating params
   schema do
     optional(:page).filled(:integer, gteq?: 1)

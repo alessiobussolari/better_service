@@ -44,7 +44,9 @@ class ApplicationService < BetterService::Services::Base
 end
 
 module BookingService
-  class IndexService < BetterService::Services::IndexService
+  class IndexService < BetterService::Services::Base
+    performed_action :listed
+
     search_with do
       { items: user.bookings.to_a }
     end
@@ -65,7 +67,10 @@ module BookingService
     end
   end
 
-  class CreateService < BetterService::Services::CreateService
+  class CreateService < BetterService::Services::Base
+    performed_action :created
+    with_transaction true
+
     schema do
       required(:title).filled(:string)
       required(:date).filled(:date)

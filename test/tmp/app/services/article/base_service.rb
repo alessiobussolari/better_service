@@ -41,13 +41,6 @@ class Article::BaseService < BetterService::Services::Base
   #   { current_user: user }
   # end
 
-  # Repository declaration - creates article_repository method
-  repository :article
-
-  # Add more repositories as needed:
-  # repository :user
-  # repository :category, class_name: "Categories::CategoryRepository"
-
   private
 
   # Override to provide default error message for this resource

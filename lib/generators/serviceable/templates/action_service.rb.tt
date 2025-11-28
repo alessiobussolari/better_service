@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 <% module_namespacing do -%>
-class <%= class_name %>::<%= action_name.camelize %>Service < BetterService::Services::ActionService
-  action_name :<%= action_name %>
+class <%= class_name %>::<%= action_name.camelize %>Service < <%= parent_class %>
+  # Action name for metadata
+  performed_action :<%= action_name %>
 
   # Schema for validating params
   schema do
@@ -23,7 +24,11 @@ class <%= class_name %>::<%= action_name.camelize %>Service < BetterService::Ser
 
   # Phase 1: Search - Load the resource
   search_with do
+<% if using_base_service? -%>
+    { resource: <%= singular_table_name %>_repository.find(params[:id]) }
+<% else -%>
     { resource: user.<%= plural_table_name %>.find(params[:id]) }
+<% end -%>
   end
 
   # Phase 2: Process - Perform the action
@@ -36,7 +41,7 @@ class <%= class_name %>::<%= action_name.camelize %>Service < BetterService::Ser
 
   # Phase 4: Respond - Format response (optional override)
   respond_with do |data|
-    success_result("<%= human_name %> <%= action_name %> successfully", data)
+    success_result(message("<%= action_name %>.success"), data)
   end
 end
 <% end -%>

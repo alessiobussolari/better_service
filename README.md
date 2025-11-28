@@ -292,11 +292,12 @@ class Product::DestroyService < BetterService::Services::DestroyService
 end
 ```
 
-#### 6. ⚡ ActionService - Custom Actions
+#### 6. ⚡ Custom Action Services
 
 ```ruby
-class Product::PublishService < BetterService::Services::ActionService
-  action_name :publish
+class Product::PublishService < Product::BaseService
+  # Action name for metadata
+  performed_action :publish
 
   schema do
     required(:id).filled(:integer)
@@ -307,7 +308,7 @@ class Product::PublishService < BetterService::Services::ActionService
   end
 
   search_with do
-    { resource: user.products.find(params[:id]) }
+    { resource: product_repository.find(params[:id]) }
   end
 
   process_with do |data|

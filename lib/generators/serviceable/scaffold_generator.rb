@@ -13,16 +13,17 @@ module Serviceable
       class_option :skip_update, type: :boolean, default: false, desc: "Skip Update service generation"
       class_option :skip_destroy, type: :boolean, default: false, desc: "Skip Destroy service generation"
       class_option :presenter, type: :boolean, default: false, desc: "Generate presenter class"
-      class_option :base, type: :boolean, default: false,
-                   desc: "Generate BaseService, Repository, and locale file"
+      class_option :skip_repository, type: :boolean, default: false, desc: "Skip repository generation"
+      class_option :skip_locale, type: :boolean, default: false, desc: "Skip locale file generation"
 
-      desc "Generate all CRUD services (Index, Show, Create, Update, Destroy)"
+      desc "Generate all CRUD services (Index, Show, Create, Update, Destroy) with BaseService"
 
       def generate_base_service
-        return unless options[:base]
-
         say "Generating BaseService, Repository and Locale...", :green
-        generate "serviceable:base", name
+        args = [name]
+        args << "--skip_repository" if options[:skip_repository]
+        args << "--skip_locale" if options[:skip_locale]
+        generate "serviceable:base", *args
       end
 
       def generate_index_service
@@ -71,13 +72,11 @@ module Serviceable
         say "\n" + "=" * 80
         say "Scaffold generation completed! 🎉", :green
         say "=" * 80
-        if options[:base]
-          say "\nGenerated base infrastructure:"
-          say "  - #{class_name}::BaseService (app/services/#{file_name}/base_service.rb)"
-          say "  - #{class_name}Repository (app/repositories/#{file_name}_repository.rb)"
-          say "  - I18n locale (config/locales/#{file_name}_services.en.yml)"
-        end
-        say "\nGenerated services#{' (inheriting from BaseService)' if options[:base]}:"
+        say "\nGenerated base infrastructure:"
+        say "  - #{class_name}::BaseService (app/services/#{file_name}/base_service.rb)"
+        say "  - #{class_name}Repository (app/repositories/#{file_name}_repository.rb)" unless options[:skip_repository]
+        say "  - I18n locale (config/locales/#{file_name}_services.en.yml)" unless options[:skip_locale]
+        say "\nGenerated services (inheriting from #{class_name}::BaseService):"
         say "  - #{class_name}::IndexService" unless options[:skip_index]
         say "  - #{class_name}::ShowService" unless options[:skip_show]
         say "  - #{class_name}::CreateService" unless options[:skip_create]
@@ -93,11 +92,9 @@ module Serviceable
       private
 
       # Build arguments array for CRUD service generators
-      # Includes --base_class when --base option is used
+      # Always includes --base_class since BaseService is always generated
       def service_generator_args
-        args = [name]
-        args << "--base_class=#{class_name}::BaseService" if options[:base]
-        args
+        [name, "--base_class=#{class_name}::BaseService"]
       end
     end
   end

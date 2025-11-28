@@ -13,7 +13,13 @@ SERVICE_TEMPLATES = {
   "create_service.rb" => <<~RUBY,
     # frozen_string_literal: true
 
-    class Product::CreateService < BetterService::Services::CreateService
+    class Product::CreateService < BetterService::Services::Base
+      # Action name for metadata
+      performed_action :created
+
+      # Enable transaction wrapping
+      with_transaction true
+
       # Schema for validating params
       schema do
         required(:name).filled(:string)
@@ -41,7 +47,10 @@ SERVICE_TEMPLATES = {
   "index_service.rb" => <<~RUBY,
     # frozen_string_literal: true
 
-    class Product::IndexService < BetterService::Services::IndexService
+    class Product::IndexService < BetterService::Services::Base
+      # Action name for metadata
+      performed_action :listed
+
       # Schema for validating params
       schema do
         optional(:page).filled(:integer, gteq?: 1)
@@ -82,7 +91,10 @@ SERVICE_TEMPLATES = {
   "show_service.rb" => <<~RUBY,
     # frozen_string_literal: true
 
-    class Product::ShowService < BetterService::Services::ShowService
+    class Product::ShowService < BetterService::Services::Base
+      # Action name for metadata
+      performed_action :showed
+
       # Schema for validating params
       schema do
         required(:id).filled
@@ -102,7 +114,13 @@ SERVICE_TEMPLATES = {
   "update_service.rb" => <<~RUBY,
     # frozen_string_literal: true
 
-    class Product::UpdateService < BetterService::Services::UpdateService
+    class Product::UpdateService < BetterService::Services::Base
+      # Action name for metadata
+      performed_action :updated
+
+      # Enable transaction wrapping
+      with_transaction true
+
       # Schema for validating params
       schema do
         required(:id).filled
@@ -129,7 +147,13 @@ SERVICE_TEMPLATES = {
   "destroy_service.rb" => <<~RUBY
     # frozen_string_literal: true
 
-    class Product::DestroyService < BetterService::Services::DestroyService
+    class Product::DestroyService < BetterService::Services::Base
+      # Action name for metadata
+      performed_action :destroyed
+
+      # Enable transaction wrapping
+      with_transaction true
+
       # Schema for validating params
       schema do
         required(:id).filled

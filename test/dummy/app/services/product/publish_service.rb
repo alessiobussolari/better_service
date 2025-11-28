@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-class Product::PublishService < BetterService::Services::ActionService
-  action_name :publish
+class Product::PublishService < BetterService::Services::Base
+  # Action name for metadata
+  performed_action :publish
 
   # Schema for validating params
   schema do

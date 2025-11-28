@@ -315,9 +315,12 @@ class RepositoryIntegrationTest < ActiveSupport::TestCase
   # ========================================
 
   test "service with repository creates record via repository" do
-    service_class = Class.new(BetterService::Services::CreateService) do
+    service_class = Class.new(BetterService::Services::Base) do
       include BetterService::Concerns::Serviceable::RepositoryAware
       repository :product, class_name: "ProductRepository"
+
+      performed_action :created
+      with_transaction true
 
       schema do
         required(:name).filled(:string)
@@ -348,9 +351,11 @@ class RepositoryIntegrationTest < ActiveSupport::TestCase
   end
 
   test "service with repository performs search via repository" do
-    service_class = Class.new(BetterService::Services::IndexService) do
+    service_class = Class.new(BetterService::Services::Base) do
       include BetterService::Concerns::Serviceable::RepositoryAware
       repository :product, class_name: "ProductRepository"
+
+      performed_action :listed
 
       search_with do
         { items: product_repository.published.to_a }
@@ -366,10 +371,12 @@ class RepositoryIntegrationTest < ActiveSupport::TestCase
   end
 
   test "service with multiple repositories works correctly" do
-    service_class = Class.new(BetterService::Services::IndexService) do
+    service_class = Class.new(BetterService::Services::Base) do
       include BetterService::Concerns::Serviceable::RepositoryAware
       repository :product, class_name: "ProductRepository"
       repository :booking, class_name: "BookingRepository"
+
+      performed_action :listed
 
       search_with do
         {

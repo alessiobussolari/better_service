@@ -59,14 +59,15 @@ The phases execute sequentially in the `call` method, with automatic error handl
 
 ### Service Types
 
-Six specialized service classes in `lib/better_service/services/`:
+Single service class in `lib/better_service/services/`:
 
-- **IndexService** - List/collection operations, returns `{ items: [], metadata: {...} }`
-- **ShowService** - Single resource retrieval, returns `{ resource: {}, metadata: {...} }`
-- **CreateService** - Resource creation with transactions enabled by default, action: `:created`
-- **UpdateService** - Resource updates with transactions enabled by default, action: `:updated`
-- **DestroyService** - Resource deletion with transactions enabled by default, action: `:destroyed`
-- **ActionService** - Custom actions with configurable `action_name`, transactions optional
+- **Base** - The foundation for all services. All services (CRUD and custom actions) inherit from a resource-specific BaseService (e.g., `Article::CreateService < Article::BaseService < BetterService::Services::Base`)
+
+**Generated Service Patterns:**
+
+All generated services (CRUD and action) inherit from a resource-specific BaseService and use:
+- `performed_action :symbol` DSL for metadata (`:listed`, `:showed`, `:created`, `:updated`, `:destroyed`, or custom actions like `:publish`)
+- `with_transaction true` for Create/Update/Destroy services (configurable for action services)
 
 ### Concerns Architecture
 
@@ -87,15 +88,18 @@ Seven concern modules in `lib/better_service/concerns/serviceable/` provide cros
 Eleven Rails generators in `lib/generators/serviceable/` and `lib/generators/better_service/`:
 
 **Service Generators (serviceable namespace):**
-- `rails generate serviceable:scaffold Product` - Generates all 5 CRUD services (supports `--presenter` and `--base` options)
+- `rails generate serviceable:scaffold Product` - Generates BaseService + all 5 CRUD services (supports `--presenter` option)
 - `rails generate serviceable:base Product` - Generates BaseService, Repository, and I18n locale file
-- `rails generate serviceable:index Product`
-- `rails generate serviceable:show Product`
-- `rails generate serviceable:create Product`
-- `rails generate serviceable:update Product`
-- `rails generate serviceable:destroy Product`
+- `rails generate serviceable:index Product` - Index service (inherits from `BetterService::Services::Base` by default)
+- `rails generate serviceable:show Product` - Show service
+- `rails generate serviceable:create Product` - Create service with transaction
+- `rails generate serviceable:update Product` - Update service with transaction
+- `rails generate serviceable:destroy Product` - Destroy service with transaction
 - `rails generate serviceable:action Product publish` - Custom action service
 - `rails generate serviceable:workflow OrderPurchase` - Workflow orchestration
+
+**CRUD Generator Options:**
+- `--base_class=Article::BaseService` - Specify custom parent class (scaffold generator sets this automatically)
 
 **Utility Generators (better_service namespace):**
 - `rails generate better_service:install` - Generates initializer + copies locale file
@@ -158,7 +162,7 @@ end
 
 # Articles::IndexService (inherits from BaseService)
 class Articles::IndexService < Articles::BaseService
-  self._action_name = :listed
+  performed_action :listed
 
   schema do
     optional(:page).filled(:integer, gteq?: 1)
@@ -525,7 +529,7 @@ Phase blocks (`search_with`, `process_with`, etc.) are stored as class attribute
 Create/Update/Destroy services enable transactions by default. The `Transactional` concern is prepended (not included) to wrap the `process` method with `ActiveRecord::Base.transaction` when enabled via the `with_transaction` DSL.
 
 ### Metadata System
-All services automatically include `metadata: { action: :action_name }` in success responses. The action name is set via `self._action_name = :symbol` in each service class. Additional metadata can be merged by returning `{ metadata: {...} }` from `process_with` blocks.
+All services automatically include `metadata: { action: :action_name }` in success responses. The action name is set via `performed_action :symbol` DSL in each service class. Additional metadata can be merged by returning `{ metadata: {...} }` from `process_with` blocks.
 
 ### Message System (I18n)
 Services support internationalization via the `message(key_path, interpolations = {})` helper in the Messageable concern. Messages follow a 3-level fallback chain:

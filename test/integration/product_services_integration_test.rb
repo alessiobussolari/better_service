@@ -70,7 +70,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     result = Product::IndexService.new(@user).call
 
     assert result[:success]
-    assert_equal :index, result[:metadata][:action]
+    assert_equal :listed, result[:metadata][:action]
     assert_equal 3, result[:items].count
   end
 
@@ -96,7 +96,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     result = Product::ShowService.new(@user, params: { id: product.id }).call
 
     assert result[:success]
-    assert_equal :show, result[:metadata][:action]
+    assert_equal :showed, result[:metadata][:action]
     assert_equal product.id, result[:resource].id
   end
 
@@ -158,7 +158,7 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     result = Product::DestroyService.new(@user, params: { id: product.id }).call
 
     assert result[:success]
-    assert_equal :deleted, result[:metadata][:action]
+    assert_equal :destroyed, result[:metadata][:action]
     assert_equal initial_count - 1, Product.count
     assert_raises(ActiveRecord::RecordNotFound) { Product.find(product.id) }
   end
@@ -220,7 +220,10 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
 
   test "authorization - service with authorization check passes when authorized" do
     # Create a service with authorization
-    service_class = Class.new(BetterService::Services::UpdateService) do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :updated
+      with_transaction true
+
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -248,7 +251,10 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
 
   test "authorization - service with authorization check fails when not authorized" do
     # Create a service with authorization that fails
-    service_class = Class.new(BetterService::Services::UpdateService) do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :updated
+      with_transaction true
+
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -284,7 +290,10 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     search_executed = false
 
     # Create a service that tracks if search was executed
-    service_class = Class.new(BetterService::Services::UpdateService) do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :updated
+      with_transaction true
+
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -319,7 +328,10 @@ class ProductServicesIntegrationTest < ActiveSupport::TestCase
     product = Product.create!(name: "Owner Product", price: 50, user: @user)
 
     # Service that checks resource ownership
-    service_class = Class.new(BetterService::Services::UpdateService) do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :updated
+      with_transaction true
+
       schema { required(:id).filled(:integer) }
 
       authorize_with do

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(bundle exec ruby:*)"
     ],
     "deny": [],
     "ask": []

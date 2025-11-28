@@ -325,8 +325,11 @@ class AuthorizableTest < ActiveSupport::TestCase
   end
 
   # Test 12: Authorization works with all service types
-  test "authorization works with CreateService" do
-    service_class = Class.new(BetterService::Services::CreateService) do
+  test "authorization works with create-style service" do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :created
+      with_transaction true
+
       schema { required(:name).filled(:string) }
 
       authorize_with do
@@ -349,8 +352,11 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert_equal :unauthorized, error.code
   end
 
-  test "authorization works with UpdateService" do
-    service_class = Class.new(BetterService::Services::UpdateService) do
+  test "authorization works with update-style service" do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :updated
+      with_transaction true
+
       schema { required(:id).filled(:integer) }
 
       authorize_with do
@@ -367,9 +373,9 @@ class AuthorizableTest < ActiveSupport::TestCase
     assert_equal :updated, result[:metadata][:action]
   end
 
-  test "authorization works with ActionService" do
-    service_class = Class.new(BetterService::Services::ActionService) do
-      action_name :publish
+  test "authorization works with action services" do
+    service_class = Class.new(BetterService::Services::Base) do
+      performed_action :publish
       schema { required(:id).filled(:integer) }
 
       authorize_with do

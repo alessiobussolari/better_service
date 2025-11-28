@@ -10,8 +10,11 @@ module BetterService
       # separation between business logic and data access.
       #
       # @example Basic usage
-      #   class Products::CreateService < BetterService::Services::CreateService
+      #   class Products::CreateService < Products::BaseService
       #     include BetterService::Concerns::Serviceable::RepositoryAware
+      #
+      #     performed_action :created
+      #     with_transaction true
       #
       #     repository :product
       #
@@ -21,7 +24,7 @@ module BetterService
       #   end
       #
       # @example With custom class name
-      #   class Bookings::AcceptService < BetterService::Services::ActionService
+      #   class Bookings::AcceptService < Bookings::BaseService
       #     include BetterService::Concerns::Serviceable::RepositoryAware
       #
       #     repository :booking, class_name: "Bookings::BookingRepository"
@@ -33,8 +36,10 @@ module BetterService
       #   end
       #
       # @example Multiple repositories shorthand
-      #   class Dashboard::IndexService < BetterService::Services::IndexService
+      #   class Dashboard::IndexService < Dashboard::BaseService
       #     include BetterService::Concerns::Serviceable::RepositoryAware
+      #
+      #     performed_action :listed
       #
       #     repositories :user, :booking, :payment
       #   end

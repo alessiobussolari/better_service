@@ -1,19 +1,19 @@
-# ActionService Examples
+# Custom Action Service Examples
 
 ## Basic Custom Action
-Create a service for custom business logic.
+Create a service for custom business logic using the base service.
 
 ```ruby
-class Order::ApproveService < BetterService::ActionService
-  model_class Order
-  action_name :approve
+class Order::ApproveService < Order::BaseService
+  # Action name for metadata
+  performed_action :approve
 
   schema do
     required(:id).filled(:integer)
   end
 
   search_with do
-    { resource: model_class.find(params[:id]) }
+    { resource: order_repository.find(params[:id]) }
   end
 
   process_with do |data|
@@ -31,9 +31,9 @@ result = Order::ApproveService.new(current_user, params: { id: 123 }).call
 Enable transactions for write operations.
 
 ```ruby
-class Payment::ProcessService < BetterService::ActionService
-  action_name :process
-  self._transactional = true  # Enable transaction
+class Payment::ProcessService < Payment::BaseService
+  performed_action :process
+  with_transaction true  # Enable transaction
 
   schema do
     required(:order_id).filled(:integer)
@@ -50,70 +50,219 @@ class Payment::ProcessService < BetterService::ActionService
     payment = Payment.create!(
       order: order,
       amount: params[:amount],
-      status: 'processing'
+      status: 'completed'
     )
 
-    # Charge payment gateway
-    gateway_response = PaymentGateway.charge(params[:amount])
-
-    payment.update!(
-      status: 'completed',
-      transaction_id: gateway_response.id
-    )
+    order.update!(payment_status: 'paid')
 
     { resource: payment }
   end
 end
 ```
 
-## State Transition
-Handle complex state changes.
+## With Authorization
+Protect custom actions with authorization.
 
 ```ruby
-class Article::PublishService < BetterService::ActionService
-  model_class Article
-  action_name :publish
-  cache_contexts :articles
+class Article::PublishService < Article::BaseService
+  performed_action :publish
+  with_transaction true
 
   schema do
     required(:id).filled(:integer)
-    optional(:publish_at).maybe(:time)
   end
 
   authorize_with do
-    article = model_class.find(params[:id])
-    article.author_id == user.id || user.editor?
+    user.can_publish_articles?
   end
 
   search_with do
-    article = model_class.find(params[:id])
-
-    unless article.draft?
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "Article must be in draft status"
-      )
-    end
-
-    { resource: article }
+    { resource: article_repository.find(params[:id]) }
   end
 
   process_with do |data|
     article = data[:resource]
-
     article.update!(
-      status: 'published',
-      published_at: params[:publish_at] || Time.current
+      published: true,
+      published_at: Time.current,
+      published_by: user
+    )
+    { resource: article }
+  end
+
+  respond_with do |data|
+    success_result(message("publish.success"), data)
+  end
+end
+```
+
+## Complex Multi-Step Action
+Handle complex operations with multiple steps.
+
+```ruby
+class Order::SendToWarehouseService < Order::BaseService
+  performed_action :send_to_warehouse
+  with_transaction true
+
+  schema do
+    required(:id).filled(:integer)
+    optional(:priority).filled(:string, included_in?: %w[normal high urgent])
+  end
+
+  authorize_with do
+    user.warehouse_access?
+  end
+
+  search_with do
+    order = order_repository.find(params[:id])
+    raise BetterService::Errors::Runtime::ValidationError.new(
+      message: "Order not ready for warehouse",
+      code: :order_not_ready
+    ) unless order.ready_for_warehouse?
+
+    { resource: order }
+  end
+
+  process_with do |data|
+    order = data[:resource]
+
+    # Create warehouse request
+    warehouse_request = WarehouseRequest.create!(
+      order: order,
+      priority: params[:priority] || 'normal',
+      requested_by: user,
+      requested_at: Time.current
     )
 
-    # Update search index
-    article.reindex_for_search
+    # Update order status
+    order.update!(
+      status: 'sent_to_warehouse',
+      warehouse_request: warehouse_request
+    )
 
-    # Notify subscribers
-    NotificationService.notify_subscribers(article) if article.published_at <= Time.current
+    # Notify warehouse
+    WarehouseNotificationJob.perform_later(warehouse_request.id)
 
-    invalidate_cache_for(user)
+    { resource: order, warehouse_request: warehouse_request }
+  end
+end
+```
 
-    { resource: article }
+## Bulk Operations
+Handle bulk actions on multiple records.
+
+```ruby
+class Product::BulkArchiveService < Product::BaseService
+  performed_action :bulk_archive
+  with_transaction true
+
+  schema do
+    required(:ids).array(:integer, min_size?: 1)
+    optional(:reason).filled(:string)
+  end
+
+  authorize_with do
+    user.admin?
+  end
+
+  search_with do
+    products = product_repository.search(id: params[:ids])
+
+    raise BetterService::Errors::Runtime::ResourceNotFoundError.new(
+      message: "Some products not found",
+      code: :products_not_found
+    ) if products.count != params[:ids].length
+
+    { items: products }
+  end
+
+  process_with do |data|
+    archived_count = 0
+
+    data[:items].each do |product|
+      product.update!(
+        archived: true,
+        archived_at: Time.current,
+        archived_by: user,
+        archive_reason: params[:reason]
+      )
+      archived_count += 1
+    end
+
+    {
+      items: data[:items],
+      metadata: { archived_count: archived_count }
+    }
+  end
+end
+```
+
+## Email/Notification Action
+Send emails or notifications as a service action.
+
+```ruby
+class User::SendWelcomeEmailService < User::BaseService
+  performed_action :send_welcome_email
+  # No transaction needed for non-database operations
+
+  schema do
+    required(:id).filled(:integer)
+  end
+
+  search_with do
+    { resource: user_repository.find(params[:id]) }
+  end
+
+  process_with do |data|
+    target_user = data[:resource]
+
+    UserMailer.welcome_email(target_user).deliver_later
+
+    target_user.update!(welcome_email_sent_at: Time.current)
+
+    { resource: target_user }
+  end
+end
+```
+
+## Report Generation
+Generate reports as an action.
+
+```ruby
+class Report::GenerateMonthlyService < Report::BaseService
+  performed_action :generate_monthly
+  with_transaction true
+
+  schema do
+    required(:month).filled(:integer, gteq?: 1, lteq?: 12)
+    required(:year).filled(:integer)
+    optional(:format).filled(:string, included_in?: %w[pdf csv excel])
+  end
+
+  search_with do
+    start_date = Date.new(params[:year], params[:month], 1)
+    end_date = start_date.end_of_month
+
+    {
+      transactions: Transaction.where(date: start_date..end_date),
+      period: { start_date: start_date, end_date: end_date }
+    }
+  end
+
+  process_with do |data|
+    report = Report.create!(
+      type: 'monthly',
+      period_start: data[:period][:start_date],
+      period_end: data[:period][:end_date],
+      format: params[:format] || 'pdf',
+      generated_by: user,
+      status: 'generating'
+    )
+
+    # Queue report generation
+    ReportGenerationJob.perform_later(report.id, data[:transactions].pluck(:id))
+
+    { resource: report }
   end
 end
 ```
@@ -122,306 +271,122 @@ end
 Integrate with external services.
 
 ```ruby
-class Order::SendToWarehouseService < BetterService::ActionService
-  action_name :send_to_warehouse
-  self._transactional = false  # External API, no DB transaction needed
+class Payment::ChargeService < Payment::BaseService
+  performed_action :charge
+  with_transaction true
 
   schema do
     required(:order_id).filled(:integer)
+    required(:payment_method_id).filled(:string)
   end
 
   search_with do
-    order = Order.includes(:items, :shipping_address).find(params[:order_id])
+    order = Order.find(params[:order_id])
+    payment_method = user.payment_methods.find_by!(stripe_id: params[:payment_method_id])
 
-    unless order.confirmed?
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "Order must be confirmed first"
-      )
-    end
-
-    { resource: order }
+    { order: order, payment_method: payment_method }
   end
 
   process_with do |data|
-    order = data[:resource]
+    order = data[:order]
+    payment_method = data[:payment_method]
 
-    # Send to external warehouse API
-    response = WarehouseAPI.create_fulfillment(
-      order_id: order.id,
-      items: order.items.map(&:to_warehouse_format),
-      shipping_address: order.shipping_address.to_h
+    # Call Stripe API
+    stripe_charge = Stripe::PaymentIntent.create(
+      amount: (order.total * 100).to_i,
+      currency: 'usd',
+      payment_method: payment_method.stripe_id,
+      confirm: true
     )
 
-    # Update order with warehouse reference
-    order.update!(warehouse_ref: response.fulfillment_id)
-
-    { resource: order, warehouse_response: response }
-  end
-end
-```
-
-## Batch Operation
-Process multiple records.
-
-```ruby
-class Product::BulkArchiveService < BetterService::ActionService
-  action_name :bulk_archive
-  cache_contexts :products
-
-  schema do
-    required(:product_ids).array(:integer, min_size?: 1)
-  end
-
-  authorize_with do
-    user.admin?
-  end
-
-  search_with do
-    products = Product.where(id: params[:product_ids])
-
-    if products.count != params[:product_ids].count
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "Some products not found"
-      )
-    end
-
-    { resources: products }
-  end
-
-  process_with do |data|
-    products = data[:resources]
-
-    archived_count = 0
-    products.each do |product|
-      product.update!(archived_at: Time.current, archived_by: user)
-      archived_count += 1
-    end
-
-    invalidate_cache_for(user)
-
-    {
-      resource: products,
-      metadata: { archived_count: archived_count }
-    }
-  end
-end
-```
-
-## Email/Notification Action
-Send communications.
-
-```ruby
-class User::SendWelcomeEmailService < BetterService::ActionService
-  action_name :send_welcome
-  self._transactional = false
-
-  schema do
-    required(:user_id).filled(:integer)
-  end
-
-  search_with do
-    { resource: User.find(params[:user_id]) }
-  end
-
-  process_with do |data|
-    user_record = data[:resource]
-
-    # Send welcome email
-    UserMailer.welcome(user_record).deliver_later
-
-    # Track event
-    Analytics.track('welcome_email_sent', user_id: user_record.id)
-
-    { resource: user_record }
-  end
-end
-```
-
-## Report Generation
-Generate reports or exports.
-
-```ruby
-class Report::GenerateMonthlyService < BetterService::ActionService
-  action_name :generate_monthly
-  self._transactional = false
-  self._allow_nil_user = true
-
-  schema do
-    required(:year).filled(:integer)
-    required(:month).filled(:integer, gteq?: 1, lteq?: 12)
-  end
-
-  search_with do
-    start_date = Date.new(params[:year], params[:month], 1)
-    end_date = start_date.end_of_month
-
-    {
-      start_date: start_date,
-      end_date: end_date
-    }
-  end
-
-  process_with do |data|
-    orders = Order.where(
-      created_at: data[:start_date]..data[:end_date]
+    # Record payment
+    payment = Payment.create!(
+      order: order,
+      stripe_payment_intent_id: stripe_charge.id,
+      amount: order.total,
+      status: stripe_charge.status
     )
 
-    report_data = {
-      total_orders: orders.count,
-      total_revenue: orders.sum(:total),
-      average_order: orders.average(:total),
-      top_products: calculate_top_products(orders)
-    }
+    order.update!(payment_status: 'paid', payment: payment)
 
-    { resource: report_data }
-  end
-
-  private
-
-  def calculate_top_products(orders)
-    OrderItem.where(order: orders)
-      .group(:product_id)
-      .sum(:quantity)
-      .sort_by { |_, qty| -qty }
-      .first(10)
-  end
-end
-```
-
-## Retry Logic for Failed Operations
-Automatically retry failed external API calls.
-
-```ruby
-class Payment::ChargeService < BetterService::ActionService
-  model_class Order
-  action_name :charge
-
-  MAX_RETRIES = 3
-  RETRY_DELAY = 2.seconds
-
-  schema do
-    required(:order_id).filled(:integer)
-  end
-
-  search_with do
-    { resource: model_class.find(params[:order_id]) }
-  end
-
-  process_with do |data|
-    order = data[:resource]
-    attempts = 0
-
-    begin
-      attempts += 1
-
-      charge = Stripe::Charge.create(
-        amount: (order.total * 100).to_i,
-        currency: 'usd',
-        source: order.payment_token
-      )
-
-      order.update!(
-        payment_status: 'paid',
-        charge_id: charge.id
-      )
-
-      { resource: order, charge: charge }
-    rescue Stripe::RateLimitError, Stripe::APIConnectionError => e
-      if attempts < MAX_RETRIES
-        sleep(RETRY_DELAY * attempts)
-        retry
-      else
-        Rails.logger.error("Payment failed after #{attempts} attempts: #{e.message}")
-        raise BetterService::Errors::Runtime::ExecutionError.new(
-          "Payment failed after #{MAX_RETRIES} attempts"
-        )
-      end
-    end
-  end
-end
-```
-
-## Rate Limiting for Sensitive Actions
-Prevent abuse with rate limiting.
-
-```ruby
-class User::SendPasswordResetService < BetterService::ActionService
-  action_name :send_password_reset
-  self._transactional = false
-
-  schema do
-    required(:email).filled(:string)
-  end
-
-  search_with do
-    user_record = User.find_by(email: params[:email].downcase)
-
-    unless user_record
-      # Don't reveal if email exists
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "If the email exists, reset instructions will be sent"
-      )
-    end
-
-    # Check rate limit (5 requests per hour)
-    cache_key = "password_reset_limit:#{user_record.id}"
-    attempts = Rails.cache.read(cache_key) || 0
-
-    if attempts >= 5
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "Too many reset requests. Please try again later."
-      )
-    end
-
-    { resource: user_record, cache_key: cache_key, attempts: attempts }
-  end
-
-  process_with do |data|
-    user_record = data[:resource]
-
-    # Generate token
-    token = user_record.generate_reset_token!
-
-    # Send email
-    UserMailer.password_reset(user_record, token).deliver_later
-
-    # Increment rate limit counter
-    Rails.cache.write(
-      data[:cache_key],
-      data[:attempts] + 1,
-      expires_in: 1.hour
+    { resource: payment, order: order }
+  rescue Stripe::CardError => e
+    raise BetterService::Errors::Runtime::ExecutionError.new(
+      message: "Payment failed: #{e.message}",
+      code: :payment_failed,
+      original_error: e
     )
-
-    { resource: user_record }
   end
 end
 ```
 
-## Action with Approval Workflow
-Pending approval before execution.
+## Password Reset Action
+Handle password reset flow.
 
 ```ruby
-class Expense::ApproveService < BetterService::ActionService
-  model_class Expense
-  action_name :approve
+class User::SendPasswordResetService < User::BaseService
+  performed_action :send_password_reset
+  allow_nil_user true  # Public action
+
+  schema do
+    required(:email).filled(:string, format?: URI::MailTo::EMAIL_REGEXP)
+  end
+
+  search_with do
+    user_account = User.find_by(email: params[:email])
+    { resource: user_account }  # Can be nil
+  end
+
+  process_with do |data|
+    user_account = data[:resource]
+
+    if user_account
+      # Generate reset token
+      token = SecureRandom.urlsafe_base64(32)
+      user_account.update!(
+        reset_password_token: token,
+        reset_password_sent_at: Time.current
+      )
+
+      # Send email
+      UserMailer.password_reset(user_account, token).deliver_later
+    end
+
+    # Always return success to prevent email enumeration
+    { resource: nil }
+  end
+
+  respond_with do |_data|
+    success_result("If an account exists, a password reset email has been sent", {})
+  end
+end
+```
+
+## Approval with Comments
+Action that requires comments.
+
+```ruby
+class Expense::ApproveService < Expense::BaseService
+  performed_action :approve
+  with_transaction true
 
   schema do
     required(:id).filled(:integer)
-    optional(:notes).maybe(:string)
+    required(:approved).filled(:bool)
+    optional(:comment).filled(:string, max_size?: 500)
   end
 
   authorize_with do
-    user.manager? || user.admin?
+    user.can_approve_expenses?
   end
 
   search_with do
-    expense = model_class.find(params[:id])
+    expense = expense_repository.find(params[:id])
 
-    unless expense.pending?
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "Only pending expenses can be approved"
-      )
-    end
+    raise BetterService::Errors::Runtime::ValidationError.new(
+      message: "Expense already processed",
+      code: :already_processed
+    ) unless expense.pending?
 
     { resource: expense }
   end
@@ -429,117 +394,158 @@ class Expense::ApproveService < BetterService::ActionService
   process_with do |data|
     expense = data[:resource]
 
-    expense.update!(
-      status: 'approved',
-      approved_by_id: user.id,
-      approved_at: Time.current,
-      approval_notes: params[:notes]
-    )
+    if params[:approved]
+      expense.approve!(
+        approved_by: user,
+        approved_at: Time.current,
+        comment: params[:comment]
+      )
+    else
+      raise BetterService::Errors::Runtime::ValidationError.new(
+        message: "Comment required when rejecting",
+        code: :comment_required
+      ) if params[:comment].blank?
 
-    # Trigger payment workflow
-    ExpensePaymentWorkflow.new(user, params: { expense_id: expense.id }).call
-
-    # Notify employee
-    ExpenseMailer.approved(expense).deliver_later
+      expense.reject!(
+        rejected_by: user,
+        rejected_at: Time.current,
+        rejection_reason: params[:comment]
+      )
+    end
 
     { resource: expense }
   end
 end
 ```
 
-## Idempotent Action
-Safe to execute multiple times.
+## Order Fulfillment
+Complex order fulfillment action.
 
 ```ruby
-class Order::FulfillService < BetterService::ActionService
-  model_class Order
-  action_name :fulfill
+class Order::FulfillService < Order::BaseService
+  performed_action :fulfill
+  with_transaction true
 
   schema do
-    required(:order_id).filled(:integer)
+    required(:id).filled(:integer)
     required(:tracking_number).filled(:string)
+    required(:carrier).filled(:string, included_in?: %w[ups fedex usps dhl])
+  end
+
+  authorize_with do
+    user.warehouse_staff? || user.admin?
   end
 
   search_with do
-    { resource: model_class.find(params[:order_id]) }
+    order = order_repository.find(params[:id])
+
+    raise BetterService::Errors::Runtime::ValidationError.new(
+      message: "Order not ready for fulfillment",
+      code: :not_ready
+    ) unless order.can_fulfill?
+
+    { resource: order }
   end
 
   process_with do |data|
     order = data[:resource]
 
-    # Idempotent: Check if already fulfilled
-    if order.fulfilled?
-      # Already fulfilled with same tracking number?
-      if order.tracking_number == params[:tracking_number]
-        return { resource: order, already_fulfilled: true }
-      else
-        raise BetterService::Errors::Runtime::ValidationError.new(
-          "Order already fulfilled with different tracking number"
-        )
-      end
-    end
-
-    # Fulfill order
-    order.update!(
-      status: 'fulfilled',
+    # Create shipment
+    shipment = Shipment.create!(
+      order: order,
       tracking_number: params[:tracking_number],
-      fulfilled_at: Time.current,
-      fulfilled_by_id: user.id
+      carrier: params[:carrier],
+      shipped_at: Time.current,
+      shipped_by: user
     )
 
-    # Send notification (only once)
+    # Update order
+    order.update!(
+      status: 'shipped',
+      shipment: shipment
+    )
+
+    # Notify customer
     OrderMailer.shipped(order).deliver_later
 
-    { resource: order, already_fulfilled: false }
+    # Update inventory
+    order.line_items.each do |item|
+      item.product.decrement!(:stock_count, item.quantity)
+    end
+
+    { resource: order, shipment: shipment }
   end
 end
 ```
 
-## Background Job Integration
-Enqueue long-running tasks.
+## Background Job Trigger
+Action that triggers a background job.
 
 ```ruby
-class Report::GenerateLargeExportService < BetterService::ActionService
-  action_name :generate_export
-  self._transactional = false
+class Report::GenerateLargeExportService < Report::BaseService
+  performed_action :generate_large_export
 
   schema do
-    required(:start_date).filled(:date)
-    required(:end_date).filled(:date)
-    required(:format).filled(:string, included_in?: %w[csv xlsx pdf])
+    required(:type).filled(:string, included_in?: %w[users orders products])
+    optional(:filters).hash do
+      optional(:start_date).filled(:date)
+      optional(:end_date).filled(:date)
+    end
   end
 
   search_with do
-    # Validate date range
-    if params[:end_date] < params[:start_date]
-      raise BetterService::Errors::Runtime::ValidationError.new(
-        "End date must be after start date"
-      )
-    end
-
-    {}
+    {}  # No database search needed
   end
 
-  process_with do |data|
-    # Create export record
+  process_with do |_data|
     export = Export.create!(
-      user: user,
-      start_date: params[:start_date],
-      end_date: params[:end_date],
-      format: params[:format],
+      type: params[:type],
+      filters: params[:filters] || {},
+      requested_by: user,
       status: 'queued'
     )
 
-    # Enqueue background job
-    GenerateExportJob.perform_later(export.id)
+    # Queue background job
+    LargeExportJob.perform_later(export.id)
 
-    # Notify user when ready
-    ExportMailer.queued(export).deliver_later
+    { resource: export }
+  end
 
-    {
-      resource: export,
-      message: "Export queued. You'll receive an email when it's ready."
-    }
+  respond_with do |data|
+    success_result(
+      "Export queued. You'll receive an email when it's ready.",
+      data
+    )
   end
 end
+```
+
+## Key Patterns for Custom Actions
+
+### Transaction Usage
+- Enable `with_transaction true` for any action that writes to the database
+- Omit for read-only actions or external API calls (handle failures differently)
+
+### Action Names
+- Use `performed_action :symbol` DSL for meaningful action tracking
+- Action name appears in `result[:metadata][:action]`
+
+### Authorization
+- Use `authorize_with` for permission checks
+- Runs BEFORE search phase for fail-fast behavior
+
+### Error Handling
+- Raise appropriate `BetterService::Errors::Runtime` exceptions
+- Use `ValidationError` for business rule violations
+- Use `ExecutionError` for unexpected failures
+
+### Response Format
+```ruby
+# All custom actions return:
+{
+  success: true,
+  message: "...",
+  resource: object,  # or items: array
+  metadata: { action: :action_name }
+}
 ```

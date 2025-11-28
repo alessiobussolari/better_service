@@ -262,9 +262,11 @@ module BetterService
       # ========================================
 
       test "repository can be used in service search_with block" do
-        service_class = Class.new(Services::IndexService) do
+        service_class = Class.new(Services::Base) do
           include Serviceable::RepositoryAware
           repository :mock_product, class_name: "BetterService::Concerns::RepositoryAwareTest::MockProductRepository"
+
+          performed_action :listed
 
           search_with do
             { items: mock_product_repository.search({}) }
@@ -280,9 +282,12 @@ module BetterService
       end
 
       test "repository can be used in service process_with block" do
-        service_class = Class.new(Services::CreateService) do
+        service_class = Class.new(Services::Base) do
           include Serviceable::RepositoryAware
           repository :mock_product, class_name: "BetterService::Concerns::RepositoryAwareTest::MockProductRepository"
+
+          performed_action :created
+          with_transaction true
 
           schema do
             required(:name).filled(:string)
@@ -305,10 +310,12 @@ module BetterService
       end
 
       test "multiple repositories can be used in same service" do
-        service_class = Class.new(Services::IndexService) do
+        service_class = Class.new(Services::Base) do
           include Serviceable::RepositoryAware
           repository :mock_product, class_name: "BetterService::Concerns::RepositoryAwareTest::MockProductRepository"
           repository :mock_user, class_name: "BetterService::Concerns::RepositoryAwareTest::MockUserRepository"
+
+          performed_action :listed
 
           search_with do
             {
