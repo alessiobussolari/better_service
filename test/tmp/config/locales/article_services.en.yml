@@ -1,0 +1,53 @@
+en:
+  article:
+    services:
+      # Index service messages
+      index:
+        success: "Articles loaded successfully"
+        error: "Error loading articles"
+        empty: "No articles found"
+
+      # Show service messages
+      show:
+        success: "Article loaded successfully"
+        error: "Error loading article"
+        not_found: "Article not found"
+
+      # Create service messages
+      create:
+        success: "Article created successfully"
+        error: "Error creating article"
+        validation_failed: "Could not create article due to validation errors"
+
+      # Update service messages
+      update:
+        success: "Article updated successfully"
+        error: "Error updating article"
+        validation_failed: "Could not update article due to validation errors"
+        not_found: "Article not found"
+
+      # Destroy service messages
+      destroy:
+        success: "Article deleted successfully"
+        error: "Error deleting article"
+        not_found: "Article not found"
+        cannot_destroy: "Cannot delete this article"
+
+      # Common messages (shared across services)
+      common:
+        success: "Operation completed successfully"
+        error: "An error occurred"
+        not_found: "Article not found"
+        not_authorized: "You are not authorized to perform this action"
+        invalid_params: "Invalid parameters provided"
+        already_exists: "Article already exists"
+
+      # Add custom action messages here:
+      # publish:
+      #   success: "Article published successfully"
+      #   error: "Error publishing article"
+      #   already_published: "Article is already published"
+      #
+      # archive:
+      #   success: "Article archived successfully"
+      #   error: "Error archiving article"

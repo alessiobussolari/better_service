@@ -9,6 +9,9 @@ module Serviceable
 
       desc "Generate a Create service for creating new resources"
 
+      class_option :base_class, type: :string, default: nil,
+                   desc: "Custom base class to inherit from (e.g., Articles::BaseService)"
+
       def create_service_file
         template "create_service.rb.tt", File.join("app/services", class_path, "#{file_name}/create_service.rb")
       end
@@ -21,6 +24,14 @@ module Serviceable
 
       def service_class_name
         "#{class_name}::CreateService"
+      end
+
+      def parent_class
+        options[:base_class] || "BetterService::Services::CreateService"
+      end
+
+      def using_base_service?
+        options[:base_class].present?
       end
     end
   end

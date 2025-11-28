@@ -1,0 +1,53 @@
+en:
+  <%= file_name %>:
+    services:
+      # Index service messages
+      index:
+        success: "<%= human_name.pluralize %> loaded successfully"
+        error: "Error loading <%= human_name.downcase.pluralize %>"
+        empty: "No <%= human_name.downcase.pluralize %> found"
+
+      # Show service messages
+      show:
+        success: "<%= human_name %> loaded successfully"
+        error: "Error loading <%= human_name.downcase %>"
+        not_found: "<%= human_name %> not found"
+
+      # Create service messages
+      create:
+        success: "<%= human_name %> created successfully"
+        error: "Error creating <%= human_name.downcase %>"
+        validation_failed: "Could not create <%= human_name.downcase %> due to validation errors"
+
+      # Update service messages
+      update:
+        success: "<%= human_name %> updated successfully"
+        error: "Error updating <%= human_name.downcase %>"
+        validation_failed: "Could not update <%= human_name.downcase %> due to validation errors"
+        not_found: "<%= human_name %> not found"
+
+      # Destroy service messages
+      destroy:
+        success: "<%= human_name %> deleted successfully"
+        error: "Error deleting <%= human_name.downcase %>"
+        not_found: "<%= human_name %> not found"
+        cannot_destroy: "Cannot delete this <%= human_name.downcase %>"
+
+      # Common messages (shared across services)
+      common:
+        success: "Operation completed successfully"
+        error: "An error occurred"
+        not_found: "<%= human_name %> not found"
+        not_authorized: "You are not authorized to perform this action"
+        invalid_params: "Invalid parameters provided"
+        already_exists: "<%= human_name %> already exists"
+
+      # Add custom action messages here:
+      # publish:
+      #   success: "<%= human_name %> published successfully"
+      #   error: "Error publishing <%= human_name.downcase %>"
+      #   already_published: "<%= human_name %> is already published"
+      #
+      # archive:
+      #   success: "<%= human_name %> archived successfully"
+      #   error: "Error archiving <%= human_name.downcase %>"

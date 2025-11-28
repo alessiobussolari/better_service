@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
 <% module_namespacing do -%>
-class <%= class_name %>::IndexService < BetterService::Services::IndexService
+class <%= class_name %>::IndexService < <%= parent_class %>
+<% if using_base_service? -%>
+  # Action name for metadata (required when inheriting from BaseService)
+  self._action_name = :listed
+
+<% else -%>
   # Optional: Use a presenter to format response data
   # Generate with: rails generate better_service:presenter <%= class_name %>
   #
@@ -10,6 +15,7 @@ class <%= class_name %>::IndexService < BetterService::Services::IndexService
   #   { current_user: user }
   # end
 
+<% end -%>
   # Schema for validating params
   schema do
     optional(:page).filled(:integer, gteq?: 1)
@@ -19,12 +25,20 @@ class <%= class_name %>::IndexService < BetterService::Services::IndexService
 
   # Phase 1: Search - Load raw data
   search_with do
+<% if using_base_service? -%>
+    # Use repository for data access
+    predicates = {}
+    predicates[:search] = params[:search] if params[:search].present?
+
+    { items: <%= singular_table_name %>_repository.search(predicates, page: params[:page] || 1, per_page: params[:per_page] || 25).to_a }
+<% else -%>
     <%= plural_table_name %> = user.<%= plural_table_name %>
     <%= plural_table_name %> = <%= plural_table_name %>.where("title LIKE ?", "%#{params[:search]}%") if params[:search].present?
     # Add pagination if needed (e.g., with Kaminari or Pagy)
     # <%= plural_table_name %> = <%= plural_table_name %>.page(params[:page]).per(params[:per_page] || 25)
 
     { items: <%= plural_table_name %>.to_a }
+<% end -%>
   end
 
   # Phase 2: Process - Transform and aggregate data
@@ -43,7 +57,8 @@ class <%= class_name %>::IndexService < BetterService::Services::IndexService
     }
   end
 
-  # Phase 4: Respond - Format response (optional override)
+  # Phase 4: Respond - Format response
+<% unless using_base_service? -%>
   # Uses I18n message helper with fallback to default messages
   #
   # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
@@ -54,19 +69,9 @@ class <%= class_name %>::IndexService < BetterService::Services::IndexService
   #           success: "<%= plural_table_name.titleize %> loaded successfully!"
   #
   # Then configure namespace: messages_namespace :<%= plural_table_name %>
+<% end -%>
   respond_with do |data|
     success_result(message("index.success"), data)
   end
-
-  # Phase 5: Viewer - UI configuration (optional)
-  # viewer do |processed, transformed, result|
-  #   {
-  #     page_title: "<%= plural_table_name.titleize %>",
-  #     breadcrumbs: [
-  #       { label: "Home", url: "/" },
-  #       { label: "<%= plural_table_name.titleize %>", url: "/<%= plural_table_name %>" }
-  #     ]
-  #   }
-  # end
 end
 <% end -%>

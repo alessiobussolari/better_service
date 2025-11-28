@@ -1,0 +1,78 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+# BaseService for <%= class_name %> resource operations.
+#
+# Provides centralized configuration for all <%= class_name %> services:
+# - Repository access via RepositoryAware concern
+# - I18n messages namespace
+# - Cache invalidation contexts
+# - Presenter configuration
+#
+# All <%= class_name %> services should inherit from this class:
+#   class <%= class_name %>::IndexService < <%= class_name %>::BaseService
+#   class <%= class_name %>::CreateService < <%= class_name %>::BaseService
+#
+# @example Usage
+#   class <%= class_name %>::IndexService < <%= class_name %>::BaseService
+#     schema do
+#       optional(:page).filled(:integer, gteq?: 1)
+#     end
+#
+#     search_with do
+#       { items: <%= singular_table_name %>_repository.all.to_a }
+#     end
+#   end
+#
+class <%= class_name %>::BaseService < BetterService::Services::Base
+  include BetterService::Concerns::Serviceable::RepositoryAware
+
+  # I18n messages namespace - messages are loaded from:
+  # config/locales/<%= file_name %>_services.en.yml
+  messages_namespace :<%= file_name %>
+
+  # Cache contexts for automatic invalidation
+  # Create/Update/Destroy services will invalidate these contexts
+  cache_contexts [:<%= plural_table_name %>]
+
+<% unless options[:skip_presenter] -%>
+  # Presenter for transforming data in responses
+  # Generate with: rails generate better_service:presenter <%= class_name %>
+  # presenter <%= class_name %>Presenter
+  # presenter_options do
+  #   { current_user: user }
+  # end
+
+<% end -%>
+<% unless options[:skip_repository] -%>
+  # Repository declaration - creates <%= singular_table_name %>_repository method
+  repository :<%= singular_table_name %>
+
+  # Add more repositories as needed:
+  # repository :user
+  # repository :category, class_name: "Categories::CategoryRepository"
+
+<% end -%>
+  private
+
+  # Override to provide default error message for this resource
+  def default_error_message
+    message("common.error")
+  end
+
+  # Override to provide default success message for this resource
+  def default_success_message
+    message("common.success")
+  end
+
+  # Add shared helper methods for all <%= class_name %> services here:
+  #
+  # def find_<%= singular_table_name %>(id)
+  #   <%= singular_table_name %>_repository.find(id)
+  # end
+  #
+  # def <%= singular_table_name %>_authorized?(record)
+  #   record.user_id == user.id
+  # end
+end
+<% end -%>

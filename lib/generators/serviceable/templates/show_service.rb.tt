@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
 <% module_namespacing do -%>
-class <%= class_name %>::ShowService < BetterService::Services::ShowService
+class <%= class_name %>::ShowService < <%= parent_class %>
+<% if using_base_service? -%>
+  # Action name for metadata (required when inheriting from BaseService)
+  self._action_name = :showed
+
+<% else -%>
   # Optional: Use a presenter to format response data
   # Generate with: rails generate better_service:presenter <%= class_name %>
   #
@@ -10,6 +15,7 @@ class <%= class_name %>::ShowService < BetterService::Services::ShowService
   #   { current_user: user }
   # end
 
+<% end -%>
   # Schema for validating params
   schema do
     required(:id).filled
@@ -17,15 +23,15 @@ class <%= class_name %>::ShowService < BetterService::Services::ShowService
 
   # Phase 1: Search - Load the resource
   search_with do
+<% if using_base_service? -%>
+    { resource: <%= singular_table_name %>_repository.find(params[:id]) }
+<% else -%>
     { resource: user.<%= plural_table_name %>.find(params[:id]) }
+<% end -%>
   end
 
-  # Phase 2: Process - Transform data (optional)
-  # process_with do |data|
-  #   data
-  # end
-
-  # Phase 4: Respond - Format response (optional override)
+  # Phase 4: Respond - Format response
+<% unless using_base_service? -%>
   # Uses I18n message helper with fallback to default messages
   #
   # To customize messages, create config/locales/<%= plural_table_name %>_services.en.yml:
@@ -36,20 +42,9 @@ class <%= class_name %>::ShowService < BetterService::Services::ShowService
   #           success: "<%= human_name %> loaded successfully!"
   #
   # Then configure namespace: messages_namespace :<%= plural_table_name %>
+<% end -%>
   respond_with do |data|
     success_result(message("show.success"), data)
   end
-
-  # Phase 5: Viewer - UI configuration (optional)
-  # viewer do |processed, transformed, result|
-  #   {
-  #     page_title: "<%= human_name %> ##{result[:resource].id}",
-  #     breadcrumbs: [
-  #       { label: "Home", url: "/" },
-  #       { label: "<%= plural_table_name.titleize %>", url: "/<%= plural_table_name %>" },
-  #       { label: "Show", url: "#" }
-  #     ]
-  #   }
-  # end
 end
 <% end -%>

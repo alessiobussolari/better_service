@@ -84,10 +84,11 @@ Seven concern modules in `lib/better_service/concerns/serviceable/` provide cros
 
 ### Generators
 
-Ten Rails generators in `lib/generators/serviceable/` and `lib/generators/better_service/`:
+Eleven Rails generators in `lib/generators/serviceable/` and `lib/generators/better_service/`:
 
 **Service Generators (serviceable namespace):**
-- `rails generate serviceable:scaffold Product` - Generates all 5 CRUD services (supports `--presenter` option)
+- `rails generate serviceable:scaffold Product` - Generates all 5 CRUD services (supports `--presenter` and `--base` options)
+- `rails generate serviceable:base Product` - Generates BaseService, Repository, and I18n locale file
 - `rails generate serviceable:index Product`
 - `rails generate serviceable:show Product`
 - `rails generate serviceable:create Product`
@@ -102,6 +103,72 @@ Ten Rails generators in `lib/generators/serviceable/` and `lib/generators/better
 - `rails generate better_service:locale products` - Creates custom I18n locale file
 
 Templates are in `lib/generators/serviceable/templates/` and `lib/generators/better_service/templates/`.
+
+### Base Service Generator (serviceable:base)
+
+The `serviceable:base` generator creates a centralized BaseService for a resource namespace, along with a Repository and I18n locale file.
+
+**Usage:**
+```bash
+# Generate base infrastructure for Articles
+rails generate serviceable:base Articles
+
+# With namespace
+rails generate serviceable:base Admin::Articles
+
+# Skip specific components
+rails generate serviceable:base Articles --skip_repository
+rails generate serviceable:base Articles --skip_locale
+rails generate serviceable:base Articles --skip_test
+```
+
+**Generated Files:**
+```
+app/services/articles/base_service.rb      # Articles::BaseService
+app/repositories/articles_repository.rb    # ArticlesRepository
+config/locales/articles_services.en.yml    # I18n messages
+test/services/articles/base_service_test.rb
+test/repositories/articles_repository_test.rb
+```
+
+**Integration with Scaffold:**
+```bash
+# Generate BaseService + all CRUD services inheriting from it
+rails generate serviceable:scaffold Articles --base
+
+# Combine with presenter
+rails generate serviceable:scaffold Articles --base --presenter
+```
+
+When using `--base` with scaffold:
+1. `Articles::BaseService` is generated first
+2. All CRUD services inherit from `Articles::BaseService` instead of `BetterService::Services::XxxService`
+3. Services use the repository declared in BaseService
+
+**Generated Structure with --base:**
+```ruby
+# Articles::BaseService
+class Articles::BaseService < BetterService::Services::Base
+  include BetterService::Concerns::Serviceable::RepositoryAware
+
+  messages_namespace :articles
+  cache_contexts [:articles]
+  repository :article
+end
+
+# Articles::IndexService (inherits from BaseService)
+class Articles::IndexService < Articles::BaseService
+  self._action_name = :listed
+
+  schema do
+    optional(:page).filled(:integer, gteq?: 1)
+  end
+
+  search_with do
+    { items: article_repository.search({}, page: params[:page]).to_a }
+  end
+end
+```
 
 ## Workflows
 

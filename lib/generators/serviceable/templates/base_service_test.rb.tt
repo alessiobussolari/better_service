@@ -1,0 +1,64 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+<% module_namespacing do -%>
+class <%= class_name %>::BaseServiceTest < ActiveSupport::TestCase
+  def setup
+    @user = users(:one) # Adjust fixture name as needed
+  end
+
+  # Test that the base service cannot be called directly
+  # (it requires subclass implementation)
+  test "base service requires schema definition" do
+    assert_raises(BetterService::Errors::Configuration::SchemaRequiredError) do
+      <%= class_name %>::BaseService.new(@user, params: {})
+    end
+  end
+
+  test "messages_namespace is configured" do
+    assert_equal :<%= file_name %>, <%= class_name %>::BaseService._messages_namespace
+  end
+
+  test "cache_contexts is configured" do
+    assert_includes <%= class_name %>::BaseService._cache_contexts, :<%= plural_table_name %>
+  end
+<% unless options[:skip_repository] -%>
+
+  # Repository tests
+  # Note: These tests verify the repository declaration works
+  # Actual repository functionality is tested in repository_test.rb
+
+  test "repository is accessible via method" do
+    # Create a concrete subclass to test repository access
+    test_service_class = Class.new(<%= class_name %>::BaseService) do
+      schema { optional(:id).filled }
+
+      def test_repository_access
+        <%= singular_table_name %>_repository
+      end
+    end
+
+    service = test_service_class.new(@user, params: {})
+    repo = service.send(:test_repository_access)
+
+    assert_instance_of <%= class_name %>Repository, repo
+  end
+
+  test "repository is memoized" do
+    test_service_class = Class.new(<%= class_name %>::BaseService) do
+      schema { optional(:id).filled }
+
+      def test_repository_memoization
+        [<%= singular_table_name %>_repository, <%= singular_table_name %>_repository]
+      end
+    end
+
+    service = test_service_class.new(@user, params: {})
+    repos = service.send(:test_repository_memoization)
+
+    assert_same repos[0], repos[1], "Repository should be memoized"
+  end
+<% end -%>
+end
+<% end -%>
