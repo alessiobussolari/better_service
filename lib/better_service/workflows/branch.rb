@@ -97,7 +97,7 @@ module BetterService
           if result[:success] == false && !result[:optional_failure]
             raise Errors::Workflowable::Runtime::StepExecutionError.new(
               "Step #{step_or_branch_group.name} failed in branch",
-              code: ErrorCodes::STEP_EXECUTION_FAILED,
+              code: ErrorCodes::STEP_FAILED,
               context: {
                 step: step_or_branch_group.name,
                 branch: @name,
