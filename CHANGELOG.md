@@ -5,6 +5,97 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-11-28
+
+### Added
+
+#### Repository Pattern
+- **`BetterService::Repository::BaseRepository`** - Generic repository pattern for data access abstraction
+  - Standard CRUD methods: `find`, `find_by`, `where`, `all`, `count`, `exists?`
+  - Create methods: `build`, `create`, `create!`
+  - Update methods: `update`, `update!`
+  - Delete methods: `destroy`, `destroy!`, `delete`
+  - Advanced `search` method with predicates, pagination, ordering, eager loading
+  - Automatic model class derivation from repository name
+  - Support for custom model class injection
+- **`RepositoryAware` concern** - DSL for declaring repository dependencies in services
+  - `repository :name` - Declare single repository with auto-derived class
+  - `repository :name, class_name: "Custom::Repository"` - Custom repository class
+  - `repository :name, as: :custom_accessor` - Custom accessor name
+  - `repositories :user, :order, :payment` - Multiple repositories shorthand
+  - Memoized repository instances per service execution
+  - Private accessor methods for encapsulation
+
+#### Documentation
+- **Context7 FAQ Examples** (`context7/examples/04-faq-examples.md`) - 10 comprehensive code examples:
+  1. Schema Validation with Dry::Schema
+  2. Authorization with authorize_with
+  3. Create Service with process/respond phases
+  4. Pure Exception Pattern
+  5. Transaction with Rollback
+  6. Workflow with Service Composition
+  7. Cache Management
+  8. Generator Scaffold
+  9. Conditional Branching Workflow with Rollback
+  10. Multi-Layered Authorization
+- **Repository Pattern Guide** (`docs/advanced/repository.md`) - Complete guide with:
+  - BaseRepository usage and methods
+  - RepositoryAware concern integration
+  - Custom repository patterns
+  - Predicates and search
+  - Testing strategies
+  - Best practices
+- **Presenters Guide** (`docs/advanced/presenters.md`) - Complete presenter documentation
+
+### Fixed
+
+- **Async cache tests** - Fixed job count expectations with `cascade: false` option
+- **Test isolation** - Improved test reliability for async invalidation tests
+
+### Changed
+
+- **Major version bump** - Indicates stable, production-ready API
+- **687 tests passing** - Complete test coverage across all features
+
+### Technical Details
+
+**Repository Pattern Architecture:**
+```
+Service Layer
+    │
+    ▼
+┌─────────────────────────────────┐
+│  include RepositoryAware        │
+│  repository :product            │
+│                                 │
+│  search_with do                 │
+│    product_repository.published │
+│  end                            │
+└─────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────┐
+│  ProductRepository              │
+│    < BaseRepository             │
+│                                 │
+│  def published                  │
+│    model.where(published: true) │
+│  end                            │
+└─────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────┐
+│  Product < ApplicationRecord    │
+└─────────────────────────────────┘
+```
+
+**Backward Compatibility:**
+- All existing services continue to work unchanged
+- Repository pattern is opt-in via `include RepositoryAware`
+- No breaking changes to existing APIs
+
+---
+
 ## [1.1.0] - 2025-11-13
 
 ### Added

@@ -168,16 +168,16 @@ module BetterService
 
     test "multiple async invalidations enqueue multiple jobs" do
       assert_enqueued_jobs 3, only: CacheService::CacheInvalidationJob do
-        CacheService.invalidate_for_context(@user, "products", async: true)
-        CacheService.invalidate_global("sidebar", async: true)
+        CacheService.invalidate_for_context(@user, "products", async: true, cascade: false)
+        CacheService.invalidate_global("sidebar", async: true, cascade: false)
         CacheService.invalidate_for_user(@user, async: true)
       end
     end
 
     test "multiple async invalidations with same pattern enqueue separate jobs" do
       assert_enqueued_jobs 2, only: CacheService::CacheInvalidationJob do
-        CacheService.invalidate_for_context(@user, "products", async: true)
-        CacheService.invalidate_for_context(@user, "products", async: true)
+        CacheService.invalidate_for_context(@user, "products", async: true, cascade: false)
+        CacheService.invalidate_for_context(@user, "products", async: true, cascade: false)
       end
     end
 

@@ -1,11 +1,21 @@
 <div align="center">
 
-# 💎 BetterService
+# BetterService
 
 ### Clean, powerful Service Objects for Rails
 
 [![Gem Version](https://badge.fury.io/rb/better_service.svg)](https://badge.fury.io/rb/better_service)
-[![License](https://img.shields.io/badge/license-WTFPL-blue.svg)](http://www.wtfpl.net/about/)
+[![CI](https://github.com/alessiobussolari/better_service/actions/workflows/ci.yml/badge.svg)](https://github.com/alessiobussolari/better_service/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/alessiobussolari/better_service/branch/main/graph/badge.svg)](https://codecov.io/gh/alessiobussolari/better_service)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-ruby.svg)](https://www.ruby-lang.org/)
+[![Rails](https://img.shields.io/badge/rails-%3E%3D%207.0-CC0000.svg)](https://rubyonrails.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+[![Downloads](https://img.shields.io/gem/dt/better_service.svg)](https://rubygems.org/gems/better_service)
+[![Documentation](https://img.shields.io/badge/docs-rubydoc.info-blue.svg)](https://rubydoc.info/gems/better_service)
+[![GitHub issues](https://img.shields.io/github/issues/alessiobussolari/better_service.svg)](https://github.com/alessiobussolari/better_service/issues)
+[![GitHub stars](https://img.shields.io/github/stars/alessiobussolari/better_service.svg)](https://github.com/alessiobussolari/better_service/stargazers)
+[![Contributors](https://img.shields.io/github/contributors/alessiobussolari/better_service.svg)](https://github.com/alessiobussolari/better_service/graphs/contributors)
 
 [Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Usage](#-usage) • [Error Handling](#%EF%B8%8F-error-handling) • [Examples](#-examples)
 
