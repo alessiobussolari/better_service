@@ -50,6 +50,9 @@ BetterService provides a clean, DSL-based approach to organizing business logic 
 ### Testing
 - [11-testing.md](11-testing.md) - Testing patterns
 
+### Architecture
+- [12-architecture-diagrams.md](12-architecture-diagrams.md) - Visual architecture diagrams
+
 ---
 
 ## Quick Example

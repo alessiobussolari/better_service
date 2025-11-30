@@ -158,3 +158,5 @@ end
 - [07-configuration.md](07-configuration.md) - Configuration options
 - [08-i18n.md](08-i18n.md) - Internationalization
 - [09-anti-patterns.md](09-anti-patterns.md) - Common mistakes
+- [10-api-reference.md](10-api-reference.md) - API reference
+- [11-architecture-diagrams.md](11-architecture-diagrams.md) - Visual architecture diagrams
