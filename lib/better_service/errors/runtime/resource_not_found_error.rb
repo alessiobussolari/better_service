@@ -31,7 +31,10 @@ module BetterService
       #
       #   MyService.new(user, params: { user_id: 99999 }).call
       #   # => raises ResourceNotFoundError
-      class ResourceNotFoundError < RuntimeError
+      class ResourceNotFoundError < BetterService::Errors::Runtime::RuntimeError
+        def initialize(message = "Resource not found", code: :resource_not_found, context: {}, original_error: nil)
+          super(message, code: code, context: context, original_error: original_error)
+        end
       end
     end
   end

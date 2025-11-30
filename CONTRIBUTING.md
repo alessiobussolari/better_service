@@ -61,12 +61,12 @@ bundle install
 
 3. Run the test suite:
 ```bash
-bundle exec rake test
+bundle exec rake spec
 ```
 
 4. Set up the test Rails app:
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails db:prepare
 ```
 
@@ -76,17 +76,17 @@ bin/rails db:prepare
 
 Run the entire test suite:
 ```bash
-bundle exec rake test
+bundle exec rspec
 ```
 
-Run specific test file:
+Run specific spec file:
 ```bash
-bundle exec ruby -Itest test/better_service/create_service_test.rb
+bundle exec rspec spec/better_service/base_spec.rb
 ```
 
-Run specific test:
+Run specific example:
 ```bash
-bundle exec ruby -Itest test/better_service/create_service_test.rb -n test_name
+bundle exec rspec spec/better_service/base_spec.rb:42
 ```
 
 ### Running Rubocop
@@ -105,13 +105,13 @@ bundle exec rubocop -a
 
 Use the Rails console to test interactively:
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails console
 ```
 
 Or run the manual test script:
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails runner 'load "../../manual_test.rb"'
 ```
 
@@ -182,12 +182,13 @@ better_service/
 │       ├── subscribers/     # Instrumentation subscribers
 │       ├── errors/          # Error classes
 │       └── generators/      # Rails generators
-├── test/
-│   ├── better_service/      # Service tests
-│   ├── concerns/            # Concern tests
-│   ├── workflows/           # Workflow tests
-│   ├── integration/         # Integration tests
-│   └── dummy/               # Test Rails app
+├── spec/
+│   ├── better_service/      # Service specs
+│   ├── concerns/            # Concern specs
+│   ├── workflow/            # Workflow specs
+│   ├── integration/         # Integration specs
+│   ├── rails_app/           # Test Rails app
+│   └── support/             # Test helpers
 ├── docs/                    # Detailed documentation
 └── context7/                # Micro-example documentation
 ```

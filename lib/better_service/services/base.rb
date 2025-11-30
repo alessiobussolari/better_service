@@ -6,7 +6,6 @@ require_relative "../concerns/serviceable/validatable"
 require_relative "../concerns/serviceable/authorizable"
 require_relative "../concerns/serviceable/presentable"
 require_relative "../concerns/serviceable/cacheable"
-require_relative "../concerns/serviceable/viewable"
 require_relative "../concerns/serviceable/transactional"
 require_relative "../concerns/instrumentation"
 
@@ -25,7 +24,6 @@ module BetterService
     include Concerns::Serviceable::Validatable
     include Concerns::Serviceable::Authorizable
     include Concerns::Serviceable::Presentable
-    include Concerns::Serviceable::Viewable
 
     # Prepend Transactional so it can wrap the process method
     prepend Concerns::Serviceable::Transactional
@@ -125,6 +123,26 @@ module BetterService
     end
 
     # Main entry point - executes the 5-phase flow
+    #
+    # @return [BetterService::Result] Result wrapper containing resource and metadata
+    #   - result.resource: The resource (single AR model, array of models, or nil on error)
+    #   - result.meta: Hash with success status, action, message, and validation errors if any
+    #   - Supports destructuring: `resource, meta = service.call`
+    #
+    # @example Success
+    #   result = ProductService.new(user, params: params).call
+    #   result.success? # => true
+    #   result.resource.persisted? # => true
+    #
+    # @example Using destructuring
+    #   product, meta = ProductService.new(user, params: params).call
+    #   meta[:success] # => true
+    #
+    # @example Validation failure (returns object with errors)
+    #   result = ProductService.new(user, params: invalid_params).call
+    #   result.failure? # => true
+    #   result.validation_errors # => { name: ["can't be blank"] }
+    #   result.resource.errors.any? # => true (object still available for form re-render)
     def call
       # Validation already raises ValidationError in initialize
       # Authorization already raises AuthorizationError
@@ -141,22 +159,26 @@ module BetterService
       transformed = transform(processed)
       result = respond(transformed)
 
-      # Phase 5: Viewer (if enabled)
-      if respond_to?(:viewer_enabled?, true) && viewer_enabled?
-        view_config = execute_viewer(processed, transformed, result)
-        result = result.merge(view: view_config)
-      end
-
-      result
-    rescue Errors::Runtime::ValidationError, Errors::Runtime::AuthorizationError
-      # Let validation and authorization errors propagate without wrapping
-      raise
+      # Build Result response
+      build_result_response(result)
+    rescue Errors::Runtime::ValidationError => e
+      # Schema validation errors (from initialize) - no object available
+      wrap_response(nil, validation_error_metadata(e))
+    rescue Errors::Runtime::AuthorizationError => e
+      # Authorization errors - no object available
+      wrap_response(nil, authorization_error_metadata(e))
+    rescue Errors::Runtime::ResourceNotFoundError => e
+      # Resource not found (BetterService error) - no object available
+      wrap_response(nil, resource_not_found_error_metadata(e))
     rescue ActiveRecord::RecordNotFound => e
-      handle_not_found_error(e)
+      # Resource not found (ActiveRecord error) - no object available
+      wrap_response(nil, not_found_error_metadata(e))
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved => e
-      handle_database_error(e)
+      # AR validation errors - return the object with errors for form re-render
+      wrap_response(e.record, ar_validation_error_metadata(e))
     rescue StandardError => e
-      handle_unexpected_error(e)
+      # Unexpected errors
+      wrap_response(nil, unexpected_error_metadata(e))
     end
 
     # Include Cacheable AFTER call method is defined so it can wrap it
@@ -199,7 +221,7 @@ module BetterService
     # Auto-invalidation happens when:
     # 1. auto_invalidate_cache is enabled (true)
     # 2. cache_contexts are defined (something to invalidate)
-    # 3. Service is a write operation (Create/Update/Destroy)
+    # 3. Service is a write operation (detected by action name or class name)
     #
     # @return [Boolean] Whether cache should be invalidated
     def should_auto_invalidate_cache?
@@ -207,62 +229,185 @@ module BetterService
       return false unless self.class.respond_to?(:_cache_contexts)
       return false unless self.class._cache_contexts.present?
 
-      # Only auto-invalidate for write operations
-      is_a?(Services::CreateService) ||
-        is_a?(Services::UpdateService) ||
-        is_a?(Services::DestroyService)
+      # Detect write operations by action name or class name pattern
+      write_actions = %i[created updated destroyed]
+      action_name = self.class._action_name
+      return true if write_actions.include?(action_name)
+
+      # Also check class name pattern as fallback
+      class_name = self.class.name.to_s
+      class_name.end_with?("CreateService", "UpdateService", "DestroyService")
     end
 
-    # Error handlers for runtime errors
-    #
-    # These methods handle unexpected errors during service execution by raising
-    # appropriate runtime exceptions. They log the error and wrap it with service context.
+    # ============================================
+    # RESULT RESPONSE BUILDERS
+    # ============================================
 
-    # Handle resource not found errors (ActiveRecord::RecordNotFound)
+    # Build response from service result hash
     #
-    # @param error [ActiveRecord::RecordNotFound] The original not found error
-    # @raise [Errors::Runtime::ResourceNotFoundError] Wrapped error with context
-    def handle_not_found_error(error)
+    # @param result [Hash] The result from respond phase
+    # @return [BetterService::Result, Array] Result wrapper or [object, metadata] tuple
+    def build_result_response(result)
+      object = extract_object(result)
+      metadata = build_success_metadata(result)
+
+      wrap_response(object, metadata)
+    end
+
+    # Wrap object and metadata in configured format
+    #
+    # @param object [Object] The resource object
+    # @param metadata [Hash] The metadata hash
+    # @return [BetterService::Result, Array] Result wrapper or [object, metadata] tuple
+    def wrap_response(object, metadata)
+      if BetterService.configuration.use_result_wrapper
+        Result.new(object, meta: metadata)
+      else
+        [object, metadata]
+      end
+    end
+
+    # Extract the object from result hash
+    # Supports :object, :resource, and :items keys
+    #
+    # @param result [Hash] Result hash from respond phase
+    # @return [Object, Array, nil] The extracted object
+    def extract_object(result)
+      result[:object] || result[:resource] || result[:items]
+    end
+
+    # Build metadata hash for successful responses
+    #
+    # @param result [Hash] Result hash from respond phase
+    # @return [Hash] Metadata hash
+    def build_success_metadata(result)
+      # Check if respond phase already signaled failure
+      success = result.fetch(:success, true)
+
+      metadata = {
+        success: success,
+        action: self.class._action_name,
+        message: result[:message]
+      }
+
+      # Merge any additional metadata provided
+      if result[:metadata].is_a?(Hash)
+        metadata.merge!(result[:metadata])
+      end
+
+      # Add validation errors if this is a failure response from process_with
+      if !success && result[:object].respond_to?(:errors) && result[:object].errors.any?
+        metadata[:validation_errors] = result[:object].errors.messages
+        metadata[:full_messages] = result[:object].errors.full_messages
+      end
+
+      metadata
+    end
+
+    # ============================================
+    # ERROR METADATA BUILDERS
+    # ============================================
+
+    # Build metadata for schema validation errors (from Dry::Schema)
+    #
+    # @param error [Errors::Runtime::ValidationError] The validation error
+    # @return [Hash] Error metadata
+    def validation_error_metadata(error)
+      Rails.logger.error "Validation error in #{self.class.name}: #{error.message}" if defined?(Rails)
+
+      {
+        success: false,
+        action: self.class._action_name,
+        message: error.message,
+        error_code: error.code,
+        validation_errors: error.context[:validation_errors] || {}
+      }
+    end
+
+    # Build metadata for authorization errors
+    #
+    # @param error [Errors::Runtime::AuthorizationError] The authorization error
+    # @return [Hash] Error metadata
+    def authorization_error_metadata(error)
+      Rails.logger.error "Authorization error in #{self.class.name}: #{error.message}" if defined?(Rails)
+
+      {
+        success: false,
+        action: self.class._action_name,
+        message: error.message,
+        error_code: error.code
+      }
+    end
+
+    # Build metadata for BetterService resource not found errors
+    #
+    # @param error [Errors::Runtime::ResourceNotFoundError] The BetterService not found error
+    # @return [Hash] Error metadata
+    def resource_not_found_error_metadata(error)
       Rails.logger.error "Resource not found in #{self.class.name}: #{error.message}" if defined?(Rails)
 
-      raise Errors::Runtime::ResourceNotFoundError.new(
-        "Resource not found: #{error.message}",
-        code: BetterService::ErrorCodes::RESOURCE_NOT_FOUND,
-        original_error: error,
-        context: { service: self.class.name, params: @params }
-      )
+      {
+        success: false,
+        action: self.class._action_name,
+        message: error.message,
+        error_code: error.code
+      }
     end
 
-    # Handle database errors (ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved)
+    # Build metadata for ActiveRecord not found errors
     #
-    # @param error [ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved] The original database error
-    # @raise [Errors::Runtime::DatabaseError] Wrapped error with context
-    def handle_database_error(error)
-      Rails.logger.error "Database error in #{self.class.name}: #{error.message}" if defined?(Rails)
-      Rails.logger.error error.backtrace.join("\n") if defined?(Rails)
+    # @param error [ActiveRecord::RecordNotFound] The not found error
+    # @return [Hash] Error metadata
+    def not_found_error_metadata(error)
+      Rails.logger.error "Resource not found in #{self.class.name}: #{error.message}" if defined?(Rails)
 
-      raise Errors::Runtime::DatabaseError.new(
-        "Database error: #{error.message}",
-        code: BetterService::ErrorCodes::DATABASE_ERROR,
-        original_error: error,
-        context: { service: self.class.name, params: @params }
-      )
+      {
+        success: false,
+        action: self.class._action_name,
+        message: "Resource not found: #{error.message}",
+        error_code: BetterService::ErrorCodes::RESOURCE_NOT_FOUND
+      }
     end
 
-    # Handle unexpected errors (all other StandardError)
+    # Build metadata for ActiveRecord validation errors
+    # Returns the record so it can be used to re-render forms
     #
-    # @param error [StandardError] The original unexpected error
-    # @raise [Errors::Runtime::ExecutionError] Wrapped error with context
-    def handle_unexpected_error(error)
+    # @param error [ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved] The AR error
+    # @return [Hash] Error metadata with validation details
+    def ar_validation_error_metadata(error)
+      Rails.logger.error "AR validation error in #{self.class.name}: #{error.message}" if defined?(Rails)
+
+      metadata = {
+        success: false,
+        action: self.class._action_name,
+        message: "Validation failed: #{error.message}",
+        error_code: BetterService::ErrorCodes::DATABASE_ERROR
+      }
+
+      # Extract validation errors from the record if available
+      if error.respond_to?(:record) && error.record
+        metadata[:validation_errors] = error.record.errors.messages
+        metadata[:full_messages] = error.record.errors.full_messages
+      end
+
+      metadata
+    end
+
+    # Build metadata for unexpected errors
+    #
+    # @param error [StandardError] The unexpected error
+    # @return [Hash] Error metadata
+    def unexpected_error_metadata(error)
       Rails.logger.error "Unexpected error in #{self.class.name}: #{error.message}" if defined?(Rails)
-      Rails.logger.error error.backtrace.join("\n") if defined?(Rails)
+      Rails.logger.error error.backtrace.join("\n") if defined?(Rails) && error.backtrace
 
-      raise Errors::Runtime::ExecutionError.new(
-        "Service execution failed: #{error.message}",
-        code: BetterService::ErrorCodes::EXECUTION_ERROR,
-        original_error: error,
-        context: { service: self.class.name, params: @params }
-      )
+      {
+        success: false,
+        action: self.class._action_name,
+        message: "Service execution failed: #{error.message}",
+        error_code: BetterService::ErrorCodes::EXECUTION_ERROR,
+        error_class: error.class.name
+      }
     end
 
     def validate_user_presence!(user)

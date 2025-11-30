@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- **Viewable concern** - Removed the View Phase (phase 5) from service architecture
+  - Removed `lib/better_service/concerns/serviceable/viewable.rb`
+  - Removed `viewer` DSL from services
+  - Updated architecture from 5-phase to 4-phase (validation → authorization → search → process → respond)
+  - View configuration should now be handled in controllers
+
 ## [2.0.0] - 2025-11-28
 
 ### Added

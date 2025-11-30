@@ -31,7 +31,10 @@ module BetterService
       #
       #   MyService.new(user, params: { user_id: 1 }).call
       #   # => raises DatabaseError
-      class DatabaseError < RuntimeError
+      class DatabaseError < BetterService::Errors::Runtime::RuntimeError
+        def initialize(message = "Database error", code: :database_error, context: {}, original_error: nil)
+          super(message, code: code, context: context, original_error: original_error)
+        end
       end
     end
   end

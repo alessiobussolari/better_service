@@ -25,22 +25,30 @@
 
 ## ✨ Features
 
-BetterService is a comprehensive Service Objects framework for Rails that brings clean architecture and powerful features to your business logic layer:
+BetterService is a comprehensive Service Objects framework for Rails that brings clean architecture and powerful features to your business logic layer.
 
-- 🎯 **5-Phase Flow Architecture**: Structured flow with search → process → transform → respond → viewer phases
+**Version 2.0.0** • 435 tests passing (180 gem + 255 rails_app)
+
+### Core Features
+
+- 🎯 **5-Phase Flow Architecture**: Structured flow with validation → authorization → search → process → respond
+- 📦 **Result Wrapper**: `BetterService::Result` with `.success?`, `.resource`, `.meta`, `.message` and destructuring support
+- 🏛️ **Repository Pattern**: Clean data access with `RepositoryAware` concern and `repository :model_name` DSL
 - ✅ **Mandatory Schema Validation**: Built-in [Dry::Schema](https://dry-rb.org/gems/dry-schema/) validation for all params
 - 🔄 **Transaction Support**: Automatic database transaction wrapping with rollback
 - 🔐 **Flexible Authorization**: `authorize_with` DSL that works with any auth system (Pundit, CanCanCan, custom)
 - ⚠️ **Rich Error Handling**: Pure Exception Pattern with hierarchical errors, rich context, and detailed debugging info
+
+### Advanced Features
+
 - 💾 **Cache Management**: Built-in `CacheService` for invalidating cache by context, user, or globally with async support
 - 🔄 **Auto-Invalidation**: Write operations (Create/Update/Destroy) automatically invalidate cache when configured
 - 🌍 **I18n Support**: Built-in internationalization with `message()` helper, custom namespaces, and fallback chain
 - 🎨 **Presenter System**: Optional data transformation layer with `BetterService::Presenter` base class
 - 📊 **Metadata Tracking**: Automatic action metadata in all service responses
 - 🔗 **Workflow Composition**: Chain multiple services into pipelines with conditional steps, rollback support, and lifecycle hooks
-- 🌲 **Conditional Branching** (v1.1.0+): Multi-path workflow execution with `branch`/`on`/`otherwise` DSL for clean conditional logic
-- 🏗️ **Powerful Generators**: 10 generators for rapid scaffolding (scaffold, CRUD services, action, workflow, locale, presenter)
-- 📦 **6 Service Types**: Specialized services for different use cases
+- 🌲 **Conditional Branching**: Multi-path workflow execution with `branch`/`on`/`otherwise` DSL for clean conditional logic
+- 🏗️ **Powerful Generators**: 11 generators for rapid scaffolding (base, scaffold, CRUD services, action, workflow, locale, presenter)
 - 🎨 **DSL-Based**: Clean, expressive DSL with `search_with`, `process_with`, `authorize_with`, etc.
 
 ---
@@ -69,19 +77,21 @@ gem install better_service
 
 ## 🚀 Quick Start
 
-### 1. Generate a Service
+### 1. Generate Services
 
 ```bash
-# Generate a complete CRUD scaffold
-rails generate serviceable:scaffold Product
+# Generate BaseService + Repository + locale file
+rails generate serviceable:base Product
+
+# Generate all CRUD services inheriting from BaseService
+rails generate serviceable:scaffold Product --base
 
 # Or generate individual services
-rails generate serviceable:create Product
-rails generate serviceable:update Product
+rails generate serviceable:create Product --base_class=Product::BaseService
 rails generate serviceable:action Product publish
 ```
 
-### 2. Use the Service
+### 2. Use the Service with Result Wrapper
 
 ```ruby
 # Create a product
@@ -90,15 +100,19 @@ result = Product::CreateService.new(current_user, params: {
   price: 2499.99
 }).call
 
-if result[:success]
-  product = result[:resource]
-  # => Product object
-  action = result[:metadata][:action]
-  # => :created
+# Check success with Result wrapper
+if result.success?
+  product = result.resource   # => Product object
+  message = result.message    # => "Product created successfully"
+  action = result.meta[:action]  # => :created
 else
-  errors = result[:errors]
-  # => { name: ["can't be blank"], price: ["must be greater than 0"] }
+  error_code = result.meta[:error_code]  # => :unauthorized
+  message = result.message  # => "Not authorized"
 end
+
+# Or use destructuring
+product, meta = result
+redirect_to product if meta[:success]
 ```
 
 ---
@@ -128,37 +142,57 @@ See **[Configuration Guide](docs/start/configuration.md)** for all options inclu
 
 ## 📚 Usage
 
-### Service Structure
+### Service Architecture
 
-All services follow a 5-phase flow:
+All services inherit from `BetterService::Services::Base` via a resource-specific BaseService:
 
 ```ruby
-class Product::CreateService < BetterService::Services::CreateService
-  # 1. Schema Validation (mandatory)
+# 1. BaseService with Repository (generated with `rails g serviceable:base Product`)
+class Product::BaseService < BetterService::Services::Base
+  include BetterService::Concerns::Serviceable::RepositoryAware
+
+  messages_namespace :products
+  cache_contexts [:products]
+  repository :product  # Injects product_repository method
+end
+
+# 2. All services inherit from BaseService
+class Product::CreateService < Product::BaseService
+  performed_action :created
+  with_transaction true
+  auto_invalidate_cache true
+
+  # Schema Validation (mandatory)
   schema do
-    required(:name).filled(:string)
+    required(:name).filled(:string, min_size?: 2)
     required(:price).filled(:decimal, gt?: 0)
   end
 
-  # 2. Authorization (optional)
+  # Authorization - IMPORTANT: use `next` not `return`
   authorize_with do
-    user.admin? || user.can_create_products?
+    next true if user.admin?  # Admin bypass
+    user.seller?
   end
 
-  # 3. Search Phase - Load data
+  # Search Phase - Load data
   search_with do
-    { category: Category.find_by(id: params[:category_id]) }
+    {}  # No data to load for create
   end
 
-  # 4. Process Phase - Business logic
-  process_with do |data|
-    product = user.products.create!(params)
+  # Process Phase - Business logic
+  process_with do |_data|
+    product = product_repository.create!(
+      name: params[:name],
+      price: params[:price],
+      user: user
+    )
+    # IMPORTANT: Return { resource: ... } for proper extraction
     { resource: product }
   end
 
-  # 5. Respond Phase - Format response
+  # Respond Phase - Format response with Result wrapper
   respond_with do |data|
-    success_result("Product created successfully", data)
+    success_result(message("create.success", name: data[:resource].name), data)
   end
 end
 ```
@@ -332,19 +366,27 @@ BetterService provides a flexible `authorize_with` DSL that works with **any** a
 ### Simple Role-Based Authorization
 
 ```ruby
-class Product::CreateService < BetterService::Services::CreateService
+class Product::CreateService < Product::BaseService
   authorize_with do
-    user.admin?
+    # IMPORTANT: Use `next` not `return` (return causes LocalJumpError)
+    next true if user.admin?
+    user.seller?
   end
 end
 ```
 
-### Resource Ownership Check
+### Resource Ownership Check (Admin Bypass Pattern)
 
 ```ruby
-class Product::UpdateService < BetterService::Services::UpdateService
+class Product::UpdateService < Product::BaseService
   authorize_with do
-    product = Product.find(params[:id])
+    # Admin can update any product (even non-existent - will get "not found" error)
+    next true if user.admin?
+
+    # For non-admin, check resource ownership
+    product = Product.find_by(id: params[:id])
+    next false unless product  # Return unauthorized if product doesn't exist
+
     product.user_id == user.id
   end
 end
@@ -1492,7 +1534,7 @@ BetterService includes comprehensive test coverage. Run tests with:
 bundle exec rake
 
 # Or
-bundle exec rake test
+bundle exec rspec
 ```
 
 ### Manual Testing
@@ -1500,7 +1542,7 @@ bundle exec rake test
 A manual test script is included for hands-on verification:
 
 ```bash
-cd test/dummy
+cd spec/rails_app
 rails console
 load '../../manual_test.rb'
 ```

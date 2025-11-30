@@ -72,6 +72,23 @@ module BetterService
     # @return [Boolean] Default: false
     attr_accessor :stats_subscriber_enabled
 
+    # Use Result wrapper class for service responses
+    #
+    # When enabled, services return BetterService::Result objects.
+    # When disabled, services return plain [object, metadata] tuples.
+    #
+    # Result wrapper provides:
+    # - result.success? / result.failure?
+    # - result.resource (the object)
+    # - result.meta (metadata hash)
+    # - Destructuring support: resource, meta = result
+    #
+    # Plain tuple provides:
+    # - object, meta = service.call
+    #
+    # @return [Boolean] Default: true
+    attr_accessor :use_result_wrapper
+
     # Cache invalidation map for cascading cache invalidation
     #
     # When a context is invalidated, all related contexts in the map
@@ -108,6 +125,9 @@ module BetterService
       @log_subscriber_enabled = false
       @log_subscriber_level = :info
       @stats_subscriber_enabled = false
+
+      # Response format defaults
+      @use_result_wrapper = true
 
       # Cache defaults
       @cache_invalidation_map = {}

@@ -7,9 +7,9 @@
 # automatically rolled back when the script completes.
 #
 # HOW TO USE:
-#   cd test/dummy
+#   cd spec/rails_app
 #   rails console
-#   load '../../manual_test.rb'
+#   load '../../scripts/manual/service_test.rb'
 #
 # NOTE: This file should NOT be auto-loaded during the test suite.
 # If tests are finding unexpected "Product" records, it means

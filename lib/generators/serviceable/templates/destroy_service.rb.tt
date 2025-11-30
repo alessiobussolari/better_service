@@ -16,26 +16,22 @@ class <%= class_name %>::DestroyService < <%= parent_class %>
   # Phase 1: Search - Load the resource
   search_with do
 <% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.find(params[:id]) }
+    { object: <%= singular_table_name %>_repository.find(params[:id]) }
 <% else -%>
-    { resource: user.<%= plural_table_name %>.find(params[:id]) }
+    { object: user.<%= plural_table_name %>.find(params[:id]) }
 <% end -%>
   end
 
   # Phase 2: Process - Delete the resource (runs in transaction)
   process_with do |data|
-<% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.destroy(data[:resource]) }
-<% else -%>
-    <%= file_name %> = data[:resource]
-    <%= file_name %>.destroy!
-    { resource: <%= file_name %> }
-<% end -%>
+    record = data[:object]
+    record.destroy!
+    { object: record }
   end
 
   # Phase 4: Respond - Format response
   respond_with do |data|
-    success_result(message("destroy.success"), data)
+    success_for(data[:object], message("destroy.success"))
   end
 end
 <% end -%>

@@ -17,26 +17,30 @@ class <%= class_name %>::UpdateService < <%= parent_class %>
   # Phase 1: Search - Load the resource
   search_with do
 <% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.find(params[:id]) }
+    { object: <%= singular_table_name %>_repository.find(params[:id]) }
 <% else -%>
-    { resource: user.<%= plural_table_name %>.find(params[:id]) }
+    { object: user.<%= plural_table_name %>.find(params[:id]) }
 <% end -%>
   end
 
   # Phase 2: Process - Update the resource (runs in transaction)
+  # Uses update (not update!) to allow graceful validation handling
   process_with do |data|
-<% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.update(data[:resource], params.except(:id)) }
-<% else -%>
-    <%= file_name %> = data[:resource]
-    <%= file_name %>.update!(params.except(:id))
-    { resource: <%= file_name %> }
-<% end -%>
+    record = data[:object]
+
+    if record.update(params.except(:id))
+      { object: record }
+    else
+      failure_for(record)
+    end
   end
 
   # Phase 4: Respond - Format response
   respond_with do |data|
-    success_result(message("update.success"), data)
+    # Pass through failure responses
+    return data if data[:success] == false
+
+    success_for(data[:object], message("update.success"))
   end
 end
 <% end -%>

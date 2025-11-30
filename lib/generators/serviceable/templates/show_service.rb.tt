@@ -13,15 +13,15 @@ class <%= class_name %>::ShowService < <%= parent_class %>
   # Phase 1: Search - Load the resource
   search_with do
 <% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.find(params[:id]) }
+    { object: <%= singular_table_name %>_repository.find(params[:id]) }
 <% else -%>
-    { resource: user.<%= plural_table_name %>.find(params[:id]) }
+    { object: user.<%= plural_table_name %>.find(params[:id]) }
 <% end -%>
   end
 
   # Phase 4: Respond - Format response
   respond_with do |data|
-    success_result(message("show.success"), data)
+    success_for(data[:object], message("show.success"))
   end
 end
 <% end -%>

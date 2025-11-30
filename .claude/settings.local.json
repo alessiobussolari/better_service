@@ -4,7 +4,10 @@
       "Bash(xargs:*)",
       "Bash(tree:*)",
       "Bash(find:*)",
-      "Bash(bundle exec ruby:*)"
+      "Bash(bundle exec ruby:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__mcp-server-firecrawl__firecrawl_scrape",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []

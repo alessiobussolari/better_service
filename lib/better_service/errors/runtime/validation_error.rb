@@ -35,7 +35,10 @@ module BetterService
       #       validation_errors: e.context[:validation_errors]
       #     }, status: :unprocessable_entity
       #   end
-      class ValidationError < RuntimeError
+      class ValidationError < BetterService::Errors::Runtime::RuntimeError
+        def initialize(message = "Validation failed", code: :validation_failed, context: {}, original_error: nil)
+          super(message, code: code, context: context, original_error: original_error)
+        end
       end
     end
   end

@@ -20,7 +20,10 @@ module BetterService
       #
       #   MyService.new(user, params: {}).call
       #   # => raises ExecutionError wrapping SocketError
-      class ExecutionError < RuntimeError
+      class ExecutionError < BetterService::Errors::Runtime::RuntimeError
+        def initialize(message = "Execution failed", code: :execution_error, context: {}, original_error: nil)
+          super(message, code: code, context: context, original_error: original_error)
+        end
       end
     end
   end

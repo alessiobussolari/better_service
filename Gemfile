@@ -14,5 +14,10 @@ gem "rubocop-rails-omakase", require: false
 gem "simplecov", require: false
 gem "simplecov-cobertura", require: false
 
+# RSpec testing framework
+gem "rspec-rails", "~> 7.0"
+gem "factory_bot_rails"
+gem "shoulda-matchers"
+
 # Start debugger with binding.b [https://github.com/ruby/debug]
 # gem "debug", ">= 1.0.0"

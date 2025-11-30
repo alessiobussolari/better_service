@@ -21,12 +21,27 @@ en:
     services:
       # Default success messages for standard CRUD operations
       default:
+        # Success messages
         created: "Resource created successfully"
         updated: "Resource updated successfully"
         deleted: "Resource deleted successfully"
         listed: "Resources retrieved successfully"
         shown: "Resource retrieved successfully"
         action_completed: "Action completed successfully"
+
+        # Structured success messages for new tuple format
+        index:
+          success: "Resources retrieved successfully"
+        show:
+          success: "Resource retrieved successfully"
+        create:
+          success: "Resource created successfully"
+          failure: "Failed to create resource"
+        update:
+          success: "Resource updated successfully"
+          failure: "Failed to update resource"
+        destroy:
+          success: "Resource deleted successfully"
 
       # Default error messages
       errors:

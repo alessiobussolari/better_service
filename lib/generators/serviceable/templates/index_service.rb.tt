@@ -19,24 +19,24 @@ class <%= class_name %>::IndexService < <%= parent_class %>
     predicates = {}
     predicates[:search] = params[:search] if params[:search].present?
 
-    { items: <%= singular_table_name %>_repository.search(predicates, page: params[:page] || 1, per_page: params[:per_page] || 25).to_a }
+    { object: <%= singular_table_name %>_repository.search(predicates, page: params[:page] || 1, per_page: params[:per_page] || 25).to_a }
 <% else -%>
     <%= plural_table_name %> = user.<%= plural_table_name %>
     <%= plural_table_name %> = <%= plural_table_name %>.where("title LIKE ?", "%#{params[:search]}%") if params[:search].present?
     # Add pagination if needed (e.g., with Kaminari or Pagy)
     # <%= plural_table_name %> = <%= plural_table_name %>.page(params[:page]).per(params[:per_page] || 25)
 
-    { items: <%= plural_table_name %>.to_a }
+    { object: <%= plural_table_name %>.to_a }
 <% end -%>
   end
 
   # Phase 2: Process - Transform and aggregate data
   process_with do |data|
     {
-      items: data[:items],
+      object: data[:object],
       metadata: {
         stats: {
-          total: data[:items].count
+          total: data[:object].count
         },
         pagination: {
           page: params[:page] || 1,
@@ -48,7 +48,7 @@ class <%= class_name %>::IndexService < <%= parent_class %>
 
   # Phase 4: Respond - Format response
   respond_with do |data|
-    success_result(message("index.success"), data)
+    success_for(data[:object], message("index.success")).merge(metadata: data[:metadata])
   end
 end
 <% end -%>

@@ -35,7 +35,7 @@ module BetterService
       # @param context [Context] The workflow context
       # @param user [Object] The current user
       # @param params [Hash] Base params for the workflow
-      # @return [Hash] Service result
+      # @return [Hash] Service result (normalized to hash format for workflow compatibility)
       def call(context, user, base_params = {})
         # Check if step should be skipped due to condition
         if should_skip?(context)
@@ -49,20 +49,23 @@ module BetterService
         # Build input params for the service
         service_params = build_params(context, base_params)
 
-        # Call the service
-        result = service_class.new(user, params: service_params).call
+        # Call the service - returns [object, metadata] tuple
+        service_result = service_class.new(user, params: service_params).call
+
+        # Normalize result to hash format (services now return [object, metadata] tuple)
+        result = normalize_service_result(service_result)
 
         # Store result in context if successful
         if result[:success]
           store_result_in_context(context, result)
         elsif optional
           # If step is optional and failed, continue but log the failure
-          context.add(:"#{name}_error", result[:errors])
+          context.add(:"#{name}_error", result[:errors] || result[:validation_errors])
           return {
             success: true,
             optional_failure: true,
             message: "Optional step #{name} failed but continuing",
-            errors: result[:errors]
+            errors: result[:errors] || result[:validation_errors]
           }
         end
 
@@ -120,6 +123,51 @@ module BetterService
           end
         else
           base_params
+        end
+      end
+
+      # Normalize service result from Result/tuple format to hash format
+      # Services return BetterService::Result but workflows expect hash with :success, :resource, etc.
+      #
+      # @param service_result [BetterService::Result, Array, Hash] The service result
+      # @return [Hash] Normalized result hash
+      def normalize_service_result(service_result)
+        # Handle BetterService::Result object
+        if service_result.is_a?(BetterService::Result)
+          object = service_result.resource
+          metadata = service_result.meta
+
+          # Build normalized hash result
+          result = metadata.dup
+          result[:success] = metadata[:success] if metadata.key?(:success)
+
+          # Store object appropriately based on type
+          if object.is_a?(Array)
+            result[:items] = object
+          elsif object.present?
+            result[:resource] = object
+          end
+
+          result
+        # Handle legacy tuple format [object, metadata]
+        elsif service_result.is_a?(Array) && service_result.size == 2
+          object, metadata = service_result
+
+          # Build normalized hash result
+          result = metadata.dup
+          result[:success] = metadata[:success] if metadata.key?(:success)
+
+          # Store object appropriately based on type
+          if object.is_a?(Array)
+            result[:items] = object
+          elsif object.present?
+            result[:resource] = object
+          end
+
+          result
+        else
+          # Legacy hash format - return as-is
+          service_result
         end
       end
 

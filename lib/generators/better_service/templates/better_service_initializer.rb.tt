@@ -8,6 +8,24 @@
 # For detailed documentation, see: docs/start/configuration.md
 
 BetterService.configure do |config|
+  # === Response Format ===
+  #
+  # Use BetterService::Result wrapper class for service responses.
+  # When enabled, services return Result objects with resource and meta attributes.
+  # When disabled, services return plain [object, metadata] tuples.
+  #
+  # Result wrapper provides:
+  # - result.success? / result.failure?
+  # - result.resource (the object)
+  # - result.meta (metadata hash)
+  # - Destructuring support: resource, meta = result
+  #
+  # Plain tuple provides:
+  # - object, meta = service.call (same destructuring syntax)
+  #
+  # Default: true
+  # config.use_result_wrapper = true
+
   # === Instrumentation Settings ===
   #
   # Enable/disable ActiveSupport::Notifications instrumentation globally.

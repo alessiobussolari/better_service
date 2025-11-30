@@ -1,0 +1,35 @@
+en:
+  orders:
+    services:
+      index:
+        success: "Orders loaded successfully"
+        empty: "No orders found"
+      show:
+        success: "Order found"
+        not_found: "Order not found"
+      create:
+        success: "Order #%{id} created successfully"
+        failure: "Failed to create order"
+      update:
+        success: "Order #%{id} updated successfully"
+        not_pending: "Order cannot be updated as it is not pending"
+        failure: "Failed to update order"
+      cancel:
+        success: "Order #%{id} cancelled successfully"
+        not_cancellable: "Order cannot be cancelled in its current status"
+        failure: "Failed to cancel order"
+      confirm:
+        success: "Order #%{id} confirmed successfully"
+        not_pending: "Order cannot be confirmed as it is not pending"
+        failure: "Failed to confirm order"
+      ship:
+        success: "Order #%{id} shipped successfully"
+        not_paid: "Order cannot be shipped as payment is not completed"
+        failure: "Failed to ship order"
+      checkout:
+        success: "Order completed! Payment via %{method}"
+        failed: "Checkout failed: %{reason}"
+        invalid_order: "Order is not valid for checkout"
+      validate:
+        success: "Order validated successfully"
+        invalid: "Order validation failed"

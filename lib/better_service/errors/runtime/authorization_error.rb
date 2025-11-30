@@ -31,7 +31,10 @@ module BetterService
       #   rescue BetterService::Errors::Runtime::AuthorizationError => e
       #     render json: { error: e.message }, status: :forbidden
       #   end
-      class AuthorizationError < RuntimeError
+      class AuthorizationError < BetterService::Errors::Runtime::RuntimeError
+        def initialize(message = "Not authorized", code: :unauthorized, context: {}, original_error: nil)
+          super(message, code: code, context: context, original_error: original_error)
+        end
       end
     end
   end

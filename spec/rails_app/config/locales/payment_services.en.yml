@@ -1,0 +1,31 @@
+en:
+  payments:
+    services:
+      create:
+        success: "Payment created with %{provider} provider"
+        already_exists: "Payment already exists for this order"
+        failure: "Failed to create payment"
+      process:
+        success: "Payment is now processing"
+        not_pending: "Payment must be pending to process"
+        failure: "Payment processing failed: %{reason}"
+      refund:
+        success: "Payment refunded. Refund ID: %{refund_id}"
+        not_completed: "Only completed payments can be refunded"
+        failure: "Refund failed: %{reason}"
+      stripe:
+        charge_success: "Stripe charge successful. Charge ID: %{charge_id}"
+        wrong_provider: "This payment is not a Stripe payment"
+        not_processing: "Payment must be in processing status"
+        declined: "Card was declined"
+        failure: "Stripe charge failed: %{reason}"
+      paypal:
+        capture_success: "PayPal payment captured. Capture ID: %{capture_id}"
+        wrong_provider: "This payment is not a PayPal payment"
+        not_processing: "Payment must be in processing status"
+        failure: "PayPal payment failed: %{reason}"
+      bank:
+        transfer_success: "Bank transfer confirmed. Reference: %{reference}"
+        wrong_provider: "This payment is not a bank transfer"
+        not_processing: "Payment must be in processing status"
+        failure: "Failed to confirm bank transfer"

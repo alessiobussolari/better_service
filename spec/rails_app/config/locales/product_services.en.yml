@@ -1,0 +1,25 @@
+en:
+  products:
+    services:
+      index:
+        success: "Products loaded successfully"
+        empty: "No products found"
+      show:
+        success: "Product found"
+        not_found: "Product not found"
+      create:
+        success: "Product '%{name}' created successfully"
+        failure: "Failed to create product"
+      update:
+        success: "Product updated successfully"
+        failure: "Failed to update product"
+      destroy:
+        success: "Product deleted successfully"
+        failure: "Failed to delete product"
+      publish:
+        success: "Product '%{name}' is now published"
+        already_published: "Product is already published"
+        failure: "Failed to publish product"
+      unpublish:
+        success: "Product '%{name}' is now unpublished"
+        already_unpublished: "Product is already unpublished"

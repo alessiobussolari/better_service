@@ -1,0 +1,9 @@
+en:
+  notifications:
+    services:
+      order_confirmation:
+        success: "Order confirmation sent to %{email}"
+        failure: "Failed to send order confirmation"
+      shipping_update:
+        success: "Shipping update sent"
+        failure: "Failed to send shipping update"

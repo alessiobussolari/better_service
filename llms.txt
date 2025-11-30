@@ -1,0 +1,212 @@
+# BetterService 2.0.0 - LLM Quick Reference
+
+Service Objects framework for Rails with 5-phase architecture, Result wrapper, and Repository pattern.
+
+## Critical Rules
+
+1. Use `next` NOT `return` in authorize_with blocks - return causes LocalJumpError
+2. Always return `{ resource: obj }` from process_with for proper extraction
+3. Never call services from within other services - use Workflows instead
+4. All services must define a schema block, even if empty
+5. Check admin status BEFORE resource lookup in authorize_with for efficiency
+6. Use with_transaction true only for write operations (Create/Update/Destroy)
+
+## 5-Phase Execution Flow
+
+1. **Validation** - Dry::Schema validation during initialize
+2. **Authorization** - authorize_with block during call
+3. **Search** - search_with block loads data
+4. **Process** - process_with block executes business logic
+5. **Respond** - respond_with block formats response
+
+## Result Wrapper API
+
+```ruby
+result = Service.new(user, params: {...}).call
+
+result.success?   # Boolean
+result.resource   # Main object
+result.meta       # { action: :created, success: true }
+result.message    # Response message
+
+# Destructuring
+resource, meta = result
+```
+
+## Service Pattern
+
+```ruby
+class Product::BaseService < BetterService::Services::Base
+  include BetterService::Concerns::Serviceable::RepositoryAware
+  messages_namespace :products
+  repository :product
+end
+
+class Product::CreateService < Product::BaseService
+  performed_action :created
+  with_transaction true
+
+  schema do
+    required(:name).filled(:string)
+    required(:price).filled(:decimal, gt?: 0)
+  end
+
+  authorize_with do
+    next true if user.admin?
+    user.seller?
+  end
+
+  search_with do
+    { context: { user: user } }
+  end
+
+  process_with do |data|
+    product = product_repository.create!(
+      name: params[:name],
+      price: params[:price],
+      user: user
+    )
+    { resource: product }
+  end
+
+  respond_with do |data|
+    success_result(message("create.success", name: data[:resource].name), data)
+  end
+end
+```
+
+## Repository Pattern
+
+```ruby
+class ProductRepository < BetterService::Repositories::Base
+  model Product
+
+  def published
+    scope.where(published: true)
+  end
+
+  def by_category(category)
+    scope.where(category: category)
+  end
+end
+
+# In service (via RepositoryAware)
+product_repository.published.find(params[:id])
+product_repository.create!(name: params[:name])
+```
+
+## Workflow Branching
+
+```ruby
+class Order::CheckoutWorkflow < BetterService::Workflows::Base
+  with_transaction true
+
+  step :validate, with: Order::ValidateService,
+       input: ->(ctx) { { id: ctx.order_id } }
+
+  branch do
+    on ->(ctx) { ctx.validate.payment_method == :card } do
+      step :charge_card, with: Payment::CardService
+    end
+
+    on ->(ctx) { ctx.validate.payment_method == :paypal } do
+      step :charge_paypal, with: Payment::PaypalService
+    end
+
+    otherwise do
+      step :bank_transfer, with: Payment::BankService
+    end
+  end
+
+  step :confirm, with: Order::ConfirmService
+end
+```
+
+## Error Handling
+
+```ruby
+# Errors raised during initialize
+BetterService::Errors::Runtime::ValidationError
+
+# Errors raised during call
+BetterService::Errors::Runtime::AuthorizationError
+BetterService::Errors::Runtime::ResourceNotFoundError
+BetterService::Errors::Runtime::DatabaseError
+BetterService::Errors::Runtime::ExecutionError
+```
+
+## Controller Pattern
+
+```ruby
+def create
+  result = Product::CreateService.new(current_user, params: product_params).call
+
+  if result.success?
+    render json: { product: result.resource }, status: :created
+  else
+    render json: { error: result.message }, status: :unprocessable_entity
+  end
+rescue BetterService::Errors::Runtime::ValidationError => e
+  render json: { errors: e.context[:validation_errors] }, status: :unprocessable_entity
+rescue BetterService::Errors::Runtime::AuthorizationError
+  render json: { error: "Forbidden" }, status: :forbidden
+end
+```
+
+## Generators
+
+```bash
+rails g better_service:install
+rails g serviceable:base Product
+rails g serviceable:scaffold Product --base --presenter
+rails g serviceable:action Product publish
+rails g serviceable:workflow Order::Checkout
+```
+
+## Anti-Patterns
+
+```ruby
+# BAD: return in authorize_with
+authorize_with { return true if user.admin? }  # LocalJumpError!
+
+# GOOD: use next
+authorize_with { next true if user.admin? }
+
+# BAD: calling service from service
+process_with { OtherService.new(user, params: {...}).call }
+
+# GOOD: use workflow
+step :other, with: OtherService
+
+# BAD: missing { resource: ... }
+process_with { product_repository.create!(params) }
+
+# GOOD: wrap in hash
+process_with { { resource: product_repository.create!(params) } }
+```
+
+## Documentation
+
+### context7/ - API Reference
+- context7/00-README.md - Overview and quick start
+- context7/01-services.md - Service architecture
+- context7/02-result.md - Result wrapper
+- context7/03-repository.md - Repository pattern
+- context7/04-workflows.md - Workflow orchestration
+- context7/05-errors.md - Error handling
+- context7/06-generators.md - Rails generators
+- context7/07-configuration.md - Configuration
+- context7/08-i18n.md - Internationalization
+- context7/09-anti-patterns.md - Common mistakes
+
+### guide/ - Tutorials
+- guide/00-README.md - Guide index
+- guide/01-your-first-service.md - Build first service
+- guide/02-crud-services.md - Full CRUD implementation
+- guide/03-authorization.md - Permission patterns
+- guide/04-validation.md - Schema validation
+- guide/05-repositories.md - Repository pattern
+- guide/06-workflows.md - Building workflows
+- guide/07-error-handling.md - Error management
+- guide/08-testing.md - Testing services
+- guide/09-real-world-example.md - E-commerce example

@@ -12,14 +12,14 @@ Interactive test script for all service types with transaction rollback.
 
 **Usage:**
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails console
 load '../../scripts/manual/service_test.rb'
 ```
 
 **Or via rails runner:**
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails runner '../../scripts/manual/service_test.rb'
 ```
 
@@ -42,7 +42,7 @@ Manual testing script for all Rails generators.
 
 **Usage:**
 ```bash
-cd test/dummy
+cd spec/rails_app
 bin/rails runner '../../scripts/manual/generator_test.rb'
 ```
 
@@ -108,10 +108,10 @@ From project root, you can run:
 
 ```bash
 # Service tests
-cd test/dummy && bin/rails runner '../../scripts/manual/service_test.rb'
+cd spec/rails_app && bin/rails runner '../../scripts/manual/service_test.rb'
 
 # Generator tests
-cd test/dummy && bin/rails runner '../../scripts/manual/generator_test.rb'
+cd spec/rails_app && bin/rails runner '../../scripts/manual/generator_test.rb'
 
 # Integration tests
 ruby -Ilib scripts/manual/integration_test.rb
@@ -122,4 +122,4 @@ ruby -Ilib scripts/manual/integration_test.rb
 - These scripts are excluded from the gem package
 - They are not run by CI/CD
 - They require a development environment setup
-- Some require the test/dummy Rails app
+- Some require the spec/rails_app Rails app

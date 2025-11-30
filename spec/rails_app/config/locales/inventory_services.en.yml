@@ -1,0 +1,10 @@
+en:
+  inventory:
+    services:
+      reserve:
+        success: "Inventory reserved for %{count} items"
+        insufficient_stock: "Insufficient stock available"
+        failure: "Failed to reserve inventory"
+      release:
+        success: "Inventory released for %{count} items"
+        failure: "Failed to release inventory"

@@ -10,11 +10,11 @@
 # 4. Providing a detailed test report
 #
 # Usage:
-#   cd test/dummy
-#   rails runner ../../manual_generator_test.rb
+#   cd spec/rails_app
+#   rails runner ../../scripts/manual/generator_test.rb
 #
 # Or from project root:
-#   cd test/dummy && rails runner ../../manual_generator_test.rb && cd ../..
+#   cd spec/rails_app && rails runner ../../scripts/manual/generator_test.rb && cd ../..
 
 require "fileutils"
 

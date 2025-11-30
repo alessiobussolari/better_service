@@ -3,11 +3,12 @@
 /log/*.log
 /pkg/
 /tmp/
-/test/dummy/db/*.sqlite3
-/test/dummy/db/*.sqlite3-*
-/test/dummy/log/*.log
-/test/dummy/storage/
-/test/dummy/tmp/
+/spec/rails_app/db/*.sqlite3
+/spec/rails_app/db/*.sqlite3-*
+/spec/rails_app/log/*.log
+/spec/rails_app/storage/
+/spec/rails_app/tmp/
+/spec/rails_app/log/
 /coverage/
 
 # Gem builds
@@ -25,4 +26,3 @@
 *.swo
 *~
 *.bak
-/test/dummy/log/

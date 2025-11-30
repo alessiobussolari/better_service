@@ -68,7 +68,7 @@ end
 print_header("BETTERSERVICE - COMPREHENSIVE TEST SUITE")
 
 puts "This script runs all tests sequentially:"
-puts "  1. Automated tests (rake test)"
+puts "  1. Automated tests (rspec)"
 puts "  2. Manual service tests (scripts/manual/service_test.rb)"
 puts "  3. Manual generator tests (scripts/manual/generator_test.rb)"
 puts "  4. Manual integration tests (scripts/manual/integration_test.rb)"
@@ -78,18 +78,18 @@ puts yellow("ℹ️  Product service files are managed automatically by rake tes
 puts
 
 # Test 1: Automated tests
-print_section("Automated Tests (Rake)", 1, 4)
+print_section("Automated Tests (RSpec)", 1, 4)
 run_test_group(
   "Automated Tests",
-  "bundle exec rake test",
-  "Running all automated tests (341 tests across all service types)"
+  "bundle exec rspec",
+  "Running all automated tests (684+ examples across all service types)"
 )
 
 # Test 2: Manual service tests
 print_section("Manual Service Tests", 2, 4)
 run_test_group(
   "Manual Service Tests",
-  "cd test/dummy && bin/rails runner '../../scripts/manual/service_test.rb'",
+  "cd spec/rails_app && bin/rails runner '../../scripts/manual/service_test.rb'",
   "Testing all service types in Rails environment with transactions"
 )
 
@@ -97,7 +97,7 @@ run_test_group(
 print_section("Manual Generator Tests", 3, 4)
 run_test_group(
   "Manual Generator Tests",
-  "cd test/dummy && bin/rails runner '../../scripts/manual/generator_test.rb'",
+  "cd spec/rails_app && bin/rails runner '../../scripts/manual/generator_test.rb'",
   "Testing all Rails generators with file creation and content validation"
 )
 

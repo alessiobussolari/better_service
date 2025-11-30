@@ -22,18 +22,33 @@ class <%= class_name %>::CreateService < <%= parent_class %>
   end
 
   # Phase 2: Process - Create the resource (runs in transaction)
+  # Uses save (not save!) to allow graceful validation handling
   process_with do |data|
 <% if using_base_service? -%>
-    { resource: <%= singular_table_name %>_repository.create!(params) }
+    record = <%= singular_table_name %>_repository.build(params)
+
+    if record.save
+      { object: record }
+    else
+      failure_for(record)
+    end
 <% else -%>
-    <%= file_name %> = user.<%= plural_table_name %>.create!(params)
-    { resource: <%= file_name %> }
+    <%= file_name %> = user.<%= plural_table_name %>.build(params)
+
+    if <%= file_name %>.save
+      { object: <%= file_name %> }
+    else
+      failure_for(<%= file_name %>)
+    end
 <% end -%>
   end
 
   # Phase 4: Respond - Format response
   respond_with do |data|
-    success_result(message("create.success"), data)
+    # Pass through failure responses
+    return data if data[:success] == false
+
+    success_for(data[:object], message("create.success"))
   end
 end
 <% end -%>

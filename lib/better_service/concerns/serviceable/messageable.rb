@@ -67,6 +67,75 @@ module BetterService
         else "action_completed"
         end
       end
+
+      # ============================================
+      # RESPONSE HELPERS FOR TUPLE FORMAT
+      # ============================================
+
+      # Build a failure response hash for validation failures
+      # Use this when using save (not save!) to handle AR validation gracefully
+      #
+      # @param record [ActiveRecord::Base] The record with validation errors
+      # @param custom_message [String, nil] Optional custom message
+      # @return [Hash] Failure response hash (for use in process_with/respond_with)
+      #
+      # @example In process_with block
+      #   process_with do |data|
+      #     product = user.products.build(params)
+      #
+      #     if product.save
+      #       { object: product }
+      #     else
+      #       failure_for(product)
+      #     end
+      #   end
+      def failure_for(record, custom_message = nil)
+        {
+          object: record,
+          success: false,
+          message: custom_message || default_failure_message(record)
+        }
+      end
+
+      # Build a success response hash
+      #
+      # @param object [Object] The object to return (AR model, array, etc.)
+      # @param custom_message [String, nil] Optional custom message
+      # @return [Hash] Success response hash (for use in respond_with)
+      #
+      # @example In respond_with block
+      #   respond_with do |data|
+      #     return data if data[:success] == false
+      #     success_for(data[:object], "Product created!")
+      #   end
+      def success_for(object, custom_message = nil)
+        {
+          object: object,
+          success: true,
+          message: custom_message || default_success_message
+        }
+      end
+
+      # Generate default failure message based on record state
+      #
+      # @param record [ActiveRecord::Base] The failed record
+      # @return [String] Failure message
+      def default_failure_message(record)
+        model_name = record.class.name.underscore.humanize.downcase
+        if record.new_record?
+          message("create.failure", default: "Failed to create #{model_name}")
+        else
+          message("update.failure", default: "Failed to update #{model_name}")
+        end
+      end
+
+      # Generate default success message based on action
+      #
+      # @return [String] Success message
+      def default_success_message
+        action = self.class._action_name || :action
+        message("#{action}.success", default: "Operation completed successfully")
+      end
     end
     end
   end

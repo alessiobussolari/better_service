@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BetterService is a Ruby gem that provides a DSL-based Service Objects framework for Rails applications. It implements a clean 5-phase architecture for business logic with built-in validation, authorization, transactions, and metadata tracking.
+BetterService is a Ruby gem that provides a DSL-based Service Objects framework for Rails applications. It implements a clean 4-phase architecture for business logic with built-in validation, authorization, transactions, and metadata tracking.
 
 **Key Technologies:**
 - Ruby >= 3.0.0
 - Rails >= 8.1.1
 - Dry::Schema ~> 1.13 for validation
-- Minitest for testing
+- RSpec for testing
 - RuboCop (Rails Omakase) for linting
 
 ## Commands
@@ -36,24 +36,24 @@ bin/rubocop -a
 
 ### Manual Testing
 ```bash
-cd test/dummy
+cd spec/rails_app
 rails console
 load '../../manual_test.rb'
 ```
 
-This runs 8 comprehensive integration tests with automatic database rollback.
+This runs 7 comprehensive integration tests with automatic database rollback.
 
 ## Architecture
 
-### 5-Phase Service Flow
+### 4-Phase Service Flow
 
-All services inherit from `BetterService::Services::Base` and follow a strict 5-phase execution flow:
+All services inherit from `BetterService::Services::Base` and follow a strict 4-phase execution flow:
 
 1. **Validation** (Mandatory) - Schema validation via Dry::Schema
 2. **Authorization** - Optional `authorize_with` block (fail-fast before search)
 3. **Search** - Load raw data via `search_with` block
 4. **Process** - Transform data via `process_with` block
-5. **Respond** - Format response via `respond_with` block (optional viewer phase if enabled)
+5. **Respond** - Format response via `respond_with` block
 
 The phases execute sequentially in the `call` method, with automatic error handling and rollback on failure.
 
@@ -71,13 +71,12 @@ All generated services (CRUD and action) inherit from a resource-specific BaseSe
 
 ### Concerns Architecture
 
-Seven concern modules in `lib/better_service/concerns/serviceable/` provide cross-cutting functionality:
+Six concern modules in `lib/better_service/concerns/serviceable/` provide cross-cutting functionality:
 
 - **Validatable** - Dry::Schema integration, defines `schema` DSL, raises `ValidationError` on failure during `initialize`
 - **Authorizable** - `authorize_with` DSL and `allow_nil_user` DSL, raises `AuthorizationError` on failure during `call`
 - **Transactional** - Database transaction wrapping via `prepend`, DSL: `with_transaction true/false`
 - **Presentable** - Transforms data in phase 3 via `transform_with` block
-- **Viewable** - Viewer configuration in phase 5
 - **Cacheable** - Caching support for service results
 - **Messageable** - Response message formatting helpers (`success_result`)
 
@@ -131,8 +130,8 @@ rails generate serviceable:base Articles --skip_test
 app/services/articles/base_service.rb      # Articles::BaseService
 app/repositories/articles_repository.rb    # ArticlesRepository
 config/locales/articles_services.en.yml    # I18n messages
-test/services/articles/base_service_test.rb
-test/repositories/articles_repository_test.rb
+spec/services/articles/base_service_spec.rb
+spec/repositories/articles_repository_spec.rb
 ```
 
 **Integration with Scaffold:**
@@ -513,7 +512,7 @@ rails generate workflowable:workflow Order::Purchase
 
 This creates:
 - `app/workflows/order/purchase_workflow.rb` - Workflow class
-- `test/workflows/order/purchase_workflow_test.rb` - Test file
+- `spec/workflows/order/purchase_workflow_spec.rb` - Test file
 
 The generated template includes commented examples of branching.
 
@@ -642,12 +641,12 @@ On success, services return hash structures:
 
 ## Testing
 
-Tests are in `test/` directory. The test suite excludes dummy app files via `Rakefile:8-9`. Generator tests are now enabled and run as part of the test suite.
+Tests are in `spec/` directory using RSpec. The test Rails application is in `spec/rails_app/` following the pattern used by gems like Devise and Activity Notification.
 
 Test structure:
 - Unit tests for each service type and concern
 - Integration tests in `manual_test.rb` for end-to-end workflows
-- Dummy Rails app in `test/dummy/` for integration testing
+- Rails test app in `spec/rails_app/` for integration testing
 
 ### Testing Error Handling
 
@@ -689,31 +688,30 @@ When writing tests, follow the existing pattern of testing both success and exce
 
 ### Testing Workflows with Branching
 
-Workflow branching tests verify that conditional execution paths work correctly. The test suite includes multiple test files covering different aspects:
+Workflow branching tests verify that conditional execution paths work correctly. The test suite includes multiple spec files covering different aspects:
 
-**Test Files:**
-- `test/workflow_branch_test.rb` - Basic branching functionality (12 tests)
-- `test/integration/workflow_branching_integration_test.rb` - Real database integration (10+ tests)
-- `test/workflow/branching_edge_cases_test.rb` - Edge cases and boundary conditions (15 tests)
-- `test/workflow/branching_performance_test.rb` - Performance benchmarks (5 tests)
-- `test/examples/workflow_branching_examples_test.rb` - Real-world examples (4+ tests)
+**Spec Files:**
+- `spec/workflow/branch_spec.rb` - Basic branching functionality
+- `spec/integration/workflow_branching_integration_spec.rb` - Real database integration
+- `spec/workflow/branching_edge_cases_spec.rb` - Edge cases and boundary conditions
+- `spec/workflow/branching_performance_spec.rb` - Performance benchmarks
 
 #### Testing Branch Conditions
 
 ```ruby
-test "branch takes correct path based on condition" do
+it "branch takes correct path based on condition" do
   user = User.new(1, premium: true)
   workflow = MyWorkflow.new(user, params: { product_id: 123 })
 
   result = workflow.call
 
-  assert result[:success]
+  expect(result[:success]).to be true
   # Verify correct steps were executed
-  assert_equal [:validate, :premium_feature, :finalize], result[:metadata][:steps_executed]
+  expect(result[:metadata][:steps_executed]).to eq([:validate, :premium_feature, :finalize])
   # Verify correct branch was taken
-  assert_includes result[:metadata][:branches_taken], "branch_1:on_1"
+  expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
   # Verify context has correct data
-  assert_equal "premium", result[:context].premium_feature[:tier]
+  expect(result[:context].premium_feature[:tier]).to eq("premium")
 end
 ```
 
@@ -755,21 +753,21 @@ class TestWorkflow < BetterService::Workflows::Base
 end
 
 # Test path A
-test "handles type A" do
+it "handles type A" do
   result = TestWorkflow.new(user, params: { type: "A" }).call
-  assert_equal [:validate, :handle_a], result[:metadata][:steps_executed]
+  expect(result[:metadata][:steps_executed]).to eq([:validate, :handle_a])
 end
 
 # Test path B
-test "handles type B" do
+it "handles type B" do
   result = TestWorkflow.new(user, params: { type: "B" }).call
-  assert_equal [:validate, :handle_b], result[:metadata][:steps_executed]
+  expect(result[:metadata][:steps_executed]).to eq([:validate, :handle_b])
 end
 
 # Test otherwise path
-test "handles unknown type" do
+it "handles unknown type" do
   result = TestWorkflow.new(user, params: { type: "X" }).call
-  assert_equal [:validate, :handle_default], result[:metadata][:steps_executed]
+  expect(result[:metadata][:steps_executed]).to eq([:validate, :handle_default])
 end
 ```
 
@@ -778,15 +776,15 @@ end
 Verify deeply nested branch decisions are tracked correctly:
 
 ```ruby
-test "nested branches track all decisions" do
+it "nested branches track all decisions" do
   workflow = NestedWorkflow.new(user, params: { ... })
   result = workflow.call
 
-  assert result[:success]
+  expect(result[:success]).to be true
   # Verify both outer and inner branch decisions
-  assert_equal 2, result[:metadata][:branches_taken].count
-  assert_includes result[:metadata][:branches_taken], "branch_1:on_1"
-  assert_includes result[:metadata][:branches_taken], "nested_branch_1:on_2"
+  expect(result[:metadata][:branches_taken].count).to eq(2)
+  expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
+  expect(result[:metadata][:branches_taken]).to include("nested_branch_1:on_2")
 end
 ```
 
@@ -795,14 +793,12 @@ end
 Verify that failures in branches trigger rollback correctly:
 
 ```ruby
-test "branch failure triggers rollback" do
+it "branch failure triggers rollback" do
   workflow = FailingBranchWorkflow.new(user, params: { ... })
 
-  error = assert_raises(BetterService::Errors::Workflowable::Runtime::WorkflowExecutionError) do
-    workflow.call
+  expect { workflow.call }.to raise_error(BetterService::Errors::Workflowable::Runtime::WorkflowExecutionError) do |error|
+    expect(error.message).to match(/Service failed/)
   end
-
-  assert_match /Service failed/, error.message
   # Verify only executed steps were rolled back (not other branch paths)
 end
 ```
@@ -812,15 +808,13 @@ end
 Verify invalid branch configurations are caught:
 
 ```ruby
-test "no matching branch without otherwise raises error" do
+it "no matching branch without otherwise raises error" do
   workflow = NoBranchMatchWorkflow.new(user, params: { ... })
 
-  error = assert_raises(BetterService::Errors::Configuration::InvalidConfigurationError) do
-    workflow.call
+  expect { workflow.call }.to raise_error(BetterService::Errors::Configuration::InvalidConfigurationError) do |error|
+    expect(error.message).to match(/No matching branch found/)
+    expect(error.code).to eq(:configuration_error)
   end
-
-  assert_match /No matching branch found/, error.message
-  assert_equal :configuration_error, error.code
 end
 ```
 
@@ -852,17 +846,17 @@ end
 Test branching with database operations:
 
 ```ruby
-test "branch workflow with real database models" do
+it "branch workflow with real database models" do
   product = Product.create!(name: "Premium Widget", price: 199.99, user: @user)
 
   workflow = ProductWorkflow.new(@user, params: { product_id: product.id })
   result = workflow.call
 
-  assert result[:success]
+  expect(result[:success]).to be true
   # Verify database changes
-  assert Product.exists?(id: product.id)
+  expect(Product.exists?(id: product.id)).to be true
   product.reload
-  assert product.published
+  expect(product.published).to be true
 end
 ```
 
@@ -871,7 +865,7 @@ end
 Run interactive tests with real database models:
 
 ```bash
-cd test/dummy
+cd spec/rails_app
 rails console
 load '../../manual_test.rb'
 ```
