@@ -8,7 +8,7 @@ RSpec.describe BetterService::Generators::LocaleGenerator, type: :generator do
 
   describe "generating locale file" do
     it "generates locale file with default actions" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "config/locales/bookings_services.en.yml" do |content|
         expect(content).to match(/en:/)
@@ -23,7 +23,7 @@ RSpec.describe BetterService::Generators::LocaleGenerator, type: :generator do
     end
 
     it "generates locale file with custom actions" do
-      run_generator ["booking", "--actions=publish", "archive"]
+      run_generator [ "booking", "--actions=publish", "archive" ]
 
       assert_file "config/locales/bookings_services.en.yml" do |content|
         expect(content).to match(/publish:/)
@@ -32,13 +32,13 @@ RSpec.describe BetterService::Generators::LocaleGenerator, type: :generator do
     end
 
     it "uses pluralized file name" do
-      run_generator ["user"]
+      run_generator [ "user" ]
 
       assert_file "config/locales/users_services.en.yml"
     end
 
     it "generates valid YAML structure" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "config/locales/bookings_services.en.yml" do |content|
         expect { YAML.safe_load(content) }.not_to raise_error
@@ -46,7 +46,7 @@ RSpec.describe BetterService::Generators::LocaleGenerator, type: :generator do
     end
 
     it "includes success and failure messages for each action" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "config/locales/bookings_services.en.yml" do |content|
         expect(content).to match(/success:/)

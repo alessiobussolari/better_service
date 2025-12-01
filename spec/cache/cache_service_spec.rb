@@ -287,8 +287,8 @@ RSpec.describe BetterService::CacheService do
       expect(stats).to have_key(:supports_async)
 
       expect(stats[:cache_store]).not_to be_nil
-      expect([true, false]).to include(stats[:supports_pattern_deletion])
-      expect([true, false]).to include(stats[:supports_async])
+      expect([ true, false ]).to include(stats[:supports_pattern_deletion])
+      expect([ true, false ]).to include(stats[:supports_async])
     end
 
     it "reflects actual cache store class" do
@@ -362,7 +362,7 @@ RSpec.describe BetterService::CacheService do
   describe "cache store compatibility" do
     it "supports_delete_matched? returns boolean" do
       result = described_class.send(:supports_delete_matched?)
-      expect([true, false]).to include(result)
+      expect([ true, false ]).to include(result)
     end
 
     it "supports_delete_matched? returns true for MemoryStore" do

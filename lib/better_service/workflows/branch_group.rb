@@ -96,7 +96,7 @@ module BetterService
 
         # Track this branch decision
         branch_decision = "#{@name}:#{selected_branch.name}"
-        branch_decisions = [branch_decision]
+        branch_decisions = [ branch_decision ]
 
         # Execute the selected branch
         executed_steps = selected_branch.execute(context, user, params, branch_decisions)

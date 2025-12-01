@@ -96,6 +96,209 @@ module BetterService
         end
       end
 
+      describe "#extract_action_from_key" do
+        let(:service) { base_service_without_namespace_class.new(nil) }
+
+        it "extracts 'created' from create key" do
+          result = service.send(:extract_action_from_key, "create.success")
+          expect(result).to eq("created")
+        end
+
+        it "extracts 'created' from CREATE key (case insensitive)" do
+          result = service.send(:extract_action_from_key, "CREATE.success")
+          expect(result).to eq("created")
+        end
+
+        it "extracts 'updated' from update key" do
+          result = service.send(:extract_action_from_key, "update.success")
+          expect(result).to eq("updated")
+        end
+
+        it "extracts 'deleted' from destroy key" do
+          result = service.send(:extract_action_from_key, "destroy.success")
+          expect(result).to eq("deleted")
+        end
+
+        it "extracts 'deleted' from delete key" do
+          result = service.send(:extract_action_from_key, "delete.success")
+          expect(result).to eq("deleted")
+        end
+
+        it "extracts 'listed' from index key" do
+          result = service.send(:extract_action_from_key, "index.success")
+          expect(result).to eq("listed")
+        end
+
+        it "extracts 'listed' from list key" do
+          result = service.send(:extract_action_from_key, "list.success")
+          expect(result).to eq("listed")
+        end
+
+        it "extracts 'shown' from show key" do
+          result = service.send(:extract_action_from_key, "show.success")
+          expect(result).to eq("shown")
+        end
+
+        it "returns 'action_completed' for unknown actions" do
+          result = service.send(:extract_action_from_key, "custom_action.success")
+          expect(result).to eq("action_completed")
+        end
+
+        it "returns 'action_completed' for empty string" do
+          result = service.send(:extract_action_from_key, "")
+          expect(result).to eq("action_completed")
+        end
+      end
+
+      describe "#failure_for" do
+        let(:mock_record_class) do
+          Class.new do
+            attr_accessor :errors
+
+            def initialize(new_record: true)
+              @new_record = new_record
+              @errors = { name: [ "can't be blank" ] }
+            end
+
+            def new_record?
+              @new_record
+            end
+
+            def self.name
+              "TestRecord"
+            end
+          end
+        end
+
+        let(:service) { base_service_without_namespace_class.new(nil) }
+
+        it "builds failure response hash" do
+          record = mock_record_class.new
+          result = service.send(:failure_for, record)
+
+          expect(result[:success]).to be false
+          expect(result[:object]).to eq(record)
+          expect(result[:message]).to be_a(String)
+        end
+
+        it "uses custom message when provided" do
+          record = mock_record_class.new
+          result = service.send(:failure_for, record, "Custom failure message")
+
+          expect(result[:message]).to eq("Custom failure message")
+        end
+
+        it "uses default failure message when no custom message" do
+          record = mock_record_class.new
+          result = service.send(:failure_for, record)
+
+          expect(result[:message]).not_to be_nil
+          expect(result[:message]).to be_a(String)
+        end
+      end
+
+      describe "#success_for" do
+        let(:service) { base_service_without_namespace_class.new(nil) }
+
+        it "builds success response hash" do
+          object = { id: 1, name: "Test" }
+          result = service.send(:success_for, object)
+
+          expect(result[:success]).to be true
+          expect(result[:object]).to eq(object)
+          expect(result[:message]).to be_a(String)
+        end
+
+        it "uses custom message when provided" do
+          object = { id: 1 }
+          result = service.send(:success_for, object, "Custom success message")
+
+          expect(result[:message]).to eq("Custom success message")
+        end
+
+        it "uses default success message when no custom message" do
+          object = { id: 1 }
+          result = service.send(:success_for, object)
+
+          expect(result[:message]).not_to be_nil
+        end
+
+        it "handles nil object" do
+          result = service.send(:success_for, nil)
+
+          expect(result[:success]).to be true
+          expect(result[:object]).to be_nil
+        end
+      end
+
+      describe "#default_failure_message" do
+        let(:mock_record_class) do
+          Class.new do
+            def initialize(new_record: true)
+              @new_record = new_record
+            end
+
+            def new_record?
+              @new_record
+            end
+
+            def self.name
+              "Product"
+            end
+          end
+        end
+
+        let(:service) { base_service_without_namespace_class.new(nil) }
+
+        it "returns create failure message for new record" do
+          record = mock_record_class.new(new_record: true)
+          result = service.send(:default_failure_message, record)
+
+          expect(result).to include("create")
+        end
+
+        it "returns update failure message for existing record" do
+          record = mock_record_class.new(new_record: false)
+          result = service.send(:default_failure_message, record)
+
+          expect(result).to include("update")
+        end
+
+        it "humanizes model name in message" do
+          record = mock_record_class.new
+          result = service.send(:default_failure_message, record)
+
+          expect(result.downcase).to include("product")
+        end
+      end
+
+      describe "#default_success_message" do
+        let(:service_with_action) do
+          klass = Class.new(Services::Base) do
+            self._allow_nil_user = true
+            performed_action :create
+          end
+          klass.new(nil)
+        end
+
+        let(:service_without_action) do
+          klass = Class.new(Services::Base) do
+            self._allow_nil_user = true
+          end
+          klass.new(nil)
+        end
+
+        it "uses action name in message when defined" do
+          result = service_with_action.send(:default_success_message)
+          expect(result).to be_a(String)
+        end
+
+        it "uses default action in message when not defined" do
+          result = service_without_action.send(:default_success_message)
+          expect(result).to be_a(String)
+        end
+      end
+
       describe "integration with service flow" do
         it "message works in search phase" do
           service_class = Class.new(Services::Base) do

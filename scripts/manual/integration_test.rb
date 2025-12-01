@@ -8,11 +8,6 @@ require "bundler/setup"
 require "active_record"
 require "better_service"
 
-# Disable Result wrapper for this test (use hash responses)
-BetterService.configure do |config|
-  config.use_result_wrapper = false
-end
-
 # Setup ActiveRecord
 ActiveRecord::Base.establish_connection(
   adapter: "sqlite3",
@@ -131,11 +126,12 @@ puts
 # Test 4: Create booking (valid params)
 puts "Test 4: Create Booking"
 service = BookingService::CreateService.new(user, params: { title: "Meeting", date: Date.today })
-resource, meta = service.call
-puts "  Success: #{meta[:success]}"
-puts "  Message: #{meta[:message]}"
-puts "  Booking ID: #{resource.id}"
-puts "  Metadata action: #{meta[:action]}"
+result = service.call
+puts "  Result type: #{result.class}"
+puts "  Success: #{result.success?}"
+puts "  Message: #{result.meta[:message]}"
+puts "  Booking ID: #{result.resource.id}"
+puts "  Metadata action: #{result.meta[:action]}"
 puts "✓ Booking created with metadata"
 puts
 
@@ -146,12 +142,13 @@ user.bookings.create!(title: "Conference", date: Date.today + 1)
 user.bookings.create!(title: "Workshop", date: Date.today + 2)
 
 service = BookingService::IndexService.new(user)
-items, meta = service.call
-puts "  Success: #{meta[:success]}"
-puts "  Items count: #{items.count}"
-puts "  Items: #{items.map(&:title).join(', ')}"
-puts "  Metadata action: #{meta[:action]}"
-puts "  Metadata stats: #{meta[:stats]}"
+result = service.call
+puts "  Result type: #{result.class}"
+puts "  Success: #{result.success?}"
+puts "  Items count: #{result.resource.count}"
+puts "  Items: #{result.resource.map(&:title).join(', ')}"
+puts "  Metadata action: #{result.meta[:action]}"
+puts "  Metadata stats: #{result.meta[:stats]}"
 puts "✓ Index service working with metadata"
 puts
 
@@ -189,18 +186,18 @@ end
 
 # First call - cache miss
 service1 = cached_service_class.new(user)
-obj1, meta1 = service1.call
-puts "  First call value: #{meta1}"
+result1 = service1.call
+puts "  First call result type: #{result1.class}"
 puts "  Cache enabled? #{service1.send(:cache_enabled?)}"
 
 # Second call - cache hit (same value)
 service2 = cached_service_class.new(user)
-obj2, meta2 = service2.call
-puts "  Second call value: #{meta2}"
+result2 = service2.call
+puts "  Second call result type: #{result2.class}"
 
-# With tuple response, we compare the objects (hash with :value key)
-value1 = obj1.is_a?(Hash) ? obj1[:value] : nil
-value2 = obj2.is_a?(Hash) ? obj2[:value] : nil
+# Compare values from Result objects
+value1 = result1.resource.is_a?(Hash) ? result1.resource[:value] : nil
+value2 = result2.resource.is_a?(Hash) ? result2.resource[:value] : nil
 
 puts "  Values match? #{value1 == value2}"
 

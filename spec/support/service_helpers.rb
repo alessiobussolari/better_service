@@ -5,7 +5,7 @@ module ServiceHelpers
   # Creates a simple test service class
   def create_test_service(parent: BetterService::Services::Base, &block)
     Class.new(parent) do
-      schema {}
+      schema { }
       class_eval(&block) if block_given?
     end
   end

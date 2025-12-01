@@ -42,9 +42,6 @@ BetterService.configure do |config|
   # Stats
   config.stats_subscriber_enabled = false
 
-  # Response format
-  config.use_result_wrapper = true
-
   # Cache
   config.cache_invalidation_map = {}
 end
@@ -202,7 +199,6 @@ Configure differently per environment.
 ```ruby
 BetterService.configure do |config|
   config.instrumentation_enabled = true
-  config.use_result_wrapper = true
 
   case Rails.env
   when "production"

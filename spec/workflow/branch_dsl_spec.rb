@@ -52,7 +52,7 @@ RSpec.describe BetterService::Workflows::BranchDSL do
       dsl.on(->(ctx) { false }) { step :step2, with: BranchDSLTestMockService }
       dsl.on(->(ctx) { true }) { step :step3, with: BranchDSLTestMockService }
 
-      expect(branch_group.branches.map(&:name)).to eq([:on_1, :on_2, :on_3])
+      expect(branch_group.branches.map(&:name)).to eq([ :on_1, :on_2, :on_3 ])
     end
 
     it "adds steps to the correct branch" do
@@ -68,8 +68,8 @@ RSpec.describe BetterService::Workflows::BranchDSL do
       branch_a = branch_group.branches[0]
       branch_b = branch_group.branches[1]
 
-      expect(branch_a.steps.map(&:name)).to eq([:step_a1, :step_a2])
-      expect(branch_b.steps.map(&:name)).to eq([:step_b1])
+      expect(branch_a.steps.map(&:name)).to eq([ :step_a1, :step_a2 ])
+      expect(branch_b.steps.map(&:name)).to eq([ :step_b1 ])
     end
   end
 
@@ -104,7 +104,7 @@ RSpec.describe BetterService::Workflows::BranchDSL do
       end
 
       default = branch_group.default_branch
-      expect(default.steps.map(&:name)).to eq([:default_step1, :default_step2])
+      expect(default.steps.map(&:name)).to eq([ :default_step1, :default_step2 ])
     end
   end
 

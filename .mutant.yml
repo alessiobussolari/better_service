@@ -1,0 +1,22 @@
+---
+# Mutation Testing Configuration for BetterService
+# Run: COVERAGE=false bundle exec mutant run --integration rspec
+
+usage: opensource
+
+mutation:
+  timeout: 60.0
+
+integration:
+  name: rspec
+
+requires:
+  - ./spec/mutant_boot
+
+matcher:
+  subjects:
+    - "BetterService*"
+
+  ignore:
+    - "BetterService::VERSION"
+    - "BetterService::Generators*"

@@ -19,7 +19,7 @@ RSpec.describe "Error Handling Integration", type: :integration do
     it "returns failure result when products are not available" do
       # Product validation happens in process_with, so service returns failure result
       result = Order::CreateService.new(user, params: {
-        items: [{ product_id: 999999, quantity: 1 }]
+        items: [ { product_id: 999999, quantity: 1 } ]
       }).call
 
       expect(result).to be_failure
@@ -87,7 +87,7 @@ RSpec.describe "Error Handling Integration", type: :integration do
 
       # BetterService catches the error and returns failure result
       result = failing_service.new(user, params: {
-        items: [{ product_id: product.id, quantity: 1 }]
+        items: [ { product_id: product.id, quantity: 1 } ]
       }).call
 
       expect(result).to be_failure
@@ -226,11 +226,12 @@ RSpec.describe "Error Handling Integration", type: :integration do
         end
       end
 
-      # Nested call - inner service error is caught by outer service
+      # Nested call - inner service raises ResourceNotFoundError
+      # Outer service catches it and wraps as :execution_error (generic wrapper)
       result = outer_service.new(user, params: { id: 42 }).call
 
       expect(result).to be_failure
-      expect(result.meta[:error_code]).to eq(:resource_not_found)
+      expect(result.meta[:error_code]).to eq(:execution_error)
     end
   end
 
@@ -290,7 +291,7 @@ RSpec.describe "Error Handling Integration", type: :integration do
         BetterService::Errors::Runtime::ExecutionError.new("Test", code: :execution_error)
       ]
 
-      required_keys = [:error_class, :message, :code, :timestamp, :context, :backtrace]
+      required_keys = [ :error_class, :message, :code, :timestamp, :context, :backtrace ]
 
       errors.each do |error|
         hash = error.to_h

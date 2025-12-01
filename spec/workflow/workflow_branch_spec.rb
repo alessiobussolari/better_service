@@ -186,7 +186,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
         result = workflow.call
 
         expect(result[:success]).to be true
-        expect(result[:metadata][:steps_executed]).to eq([:validate, :premium_feature, :finalize])
+        expect(result[:metadata][:steps_executed]).to eq([ :validate, :premium_feature, :finalize ])
         expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
         expect(result[:context].premium_feature[:feature]).to eq("premium")
       end
@@ -200,7 +200,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
         result = workflow.call
 
         expect(result[:success]).to be true
-        expect(result[:metadata][:steps_executed]).to eq([:validate, :basic_feature, :finalize])
+        expect(result[:metadata][:steps_executed]).to eq([ :validate, :basic_feature, :finalize ])
         expect(result[:metadata][:branches_taken]).to include("branch_1:otherwise")
         expect(result[:context].basic_feature[:feature]).to eq("basic")
       end
@@ -215,7 +215,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :enterprise_feature, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :enterprise_feature, :finalize ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
       expect(result[:context].enterprise_feature[:feature]).to eq("enterprise")
     end
@@ -227,7 +227,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :premium_feature, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :premium_feature, :finalize ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:on_2")
       expect(result[:context].premium_feature[:feature]).to eq("premium")
     end
@@ -239,7 +239,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :basic_feature, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :basic_feature, :finalize ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:on_3")
       expect(result[:context].basic_feature[:feature]).to eq("basic")
     end
@@ -251,7 +251,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :default_feature, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :default_feature, :finalize ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:otherwise")
       expect(result[:context].default_feature[:feature]).to eq("default")
     end
@@ -265,7 +265,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :premium_feature, :premium_nested, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :premium_feature, :premium_nested, :finalize ])
       expect(result[:metadata][:branches_taken].count).to eq(2)
       expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
     end
@@ -277,7 +277,7 @@ RSpec.describe "Workflow Branch", type: :workflow do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :premium_feature, :basic_nested, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :premium_feature, :basic_nested, :finalize ])
       expect(result[:metadata][:branches_taken].count).to eq(2)
     end
   end

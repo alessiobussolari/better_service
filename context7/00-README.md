@@ -153,7 +153,8 @@ end
 - [02-result.md](02-result.md) - Result wrapper API
 - [03-repository.md](03-repository.md) - Repository pattern
 - [04-workflows.md](04-workflows.md) - Workflow orchestration
-- [05-errors.md](05-errors.md) - Error handling
+- [05-caching.md](05-caching.md) - Caching system
+- [05b-errors.md](05-errors.md) - Error handling
 - [06-generators.md](06-generators.md) - Rails generators
 - [07-configuration.md](07-configuration.md) - Configuration options
 - [08-i18n.md](08-i18n.md) - Internationalization

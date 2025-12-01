@@ -20,7 +20,7 @@ module Serviceable
 
       def generate_base_service
         say "Generating BaseService, Repository and Locale...", :green
-        args = [name]
+        args = [ name ]
         args << "--skip_repository" if options[:skip_repository]
         args << "--skip_locale" if options[:skip_locale]
         generate "serviceable:base", *args
@@ -94,7 +94,7 @@ module Serviceable
       # Build arguments array for CRUD service generators
       # Always includes --base_class since BaseService is always generated
       def service_generator_args
-        [name, "--base_class=#{class_name}::BaseService"]
+        [ name, "--base_class=#{class_name}::BaseService" ]
       end
     end
   end

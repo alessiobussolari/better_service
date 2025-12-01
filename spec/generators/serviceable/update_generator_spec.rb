@@ -8,7 +8,7 @@ RSpec.describe Serviceable::Generators::UpdateGenerator, type: :generator do
 
   describe "generating update service" do
     it "generates update service file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/update_service.rb" do |content|
         expect(content).to match(/class Booking::UpdateService < BetterService::Services::Base/)
@@ -16,7 +16,7 @@ RSpec.describe Serviceable::Generators::UpdateGenerator, type: :generator do
     end
 
     it "generates service with performed_action :updated" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/update_service.rb" do |content|
         expect(content).to match(/performed_action :updated/)
@@ -24,7 +24,7 @@ RSpec.describe Serviceable::Generators::UpdateGenerator, type: :generator do
     end
 
     it "generates service with transaction enabled" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/update_service.rb" do |content|
         expect(content).to match(/with_transaction true/)
@@ -32,7 +32,7 @@ RSpec.describe Serviceable::Generators::UpdateGenerator, type: :generator do
     end
 
     it "generates service with process_with block" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/update_service.rb" do |content|
         expect(content).to match(/process_with do/)
@@ -41,7 +41,7 @@ RSpec.describe Serviceable::Generators::UpdateGenerator, type: :generator do
     end
 
     it "generates test file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/services/booking/update_service_test.rb"
     end

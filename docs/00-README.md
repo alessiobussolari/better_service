@@ -33,6 +33,7 @@ BetterService provides a clean, DSL-based approach to organizing business logic 
 
 ### Response Handling
 - [05-result.md](05-result.md) - Result wrapper guide
+- [05b-caching.md](05-caching.md) - Caching system
 
 ### Data Access
 - [06-repository.md](06-repository.md) - Repository pattern

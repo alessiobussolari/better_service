@@ -126,49 +126,35 @@ module BetterService
         end
       end
 
-      # Normalize service result from Result/tuple format to hash format
+      # Normalize service result from Result format to hash format
       # Services return BetterService::Result but workflows expect hash with :success, :resource, etc.
       #
-      # @param service_result [BetterService::Result, Array, Hash] The service result
+      # @param service_result [BetterService::Result] The service result
       # @return [Hash] Normalized result hash
+      # @raise [BetterService::Errors::Runtime::InvalidResultError] If result is not a BetterService::Result
       def normalize_service_result(service_result)
-        # Handle BetterService::Result object
-        if service_result.is_a?(BetterService::Result)
-          object = service_result.resource
-          metadata = service_result.meta
-
-          # Build normalized hash result
-          result = metadata.dup
-          result[:success] = metadata[:success] if metadata.key?(:success)
-
-          # Store object appropriately based on type
-          if object.is_a?(Array)
-            result[:items] = object
-          elsif object.present?
-            result[:resource] = object
-          end
-
-          result
-        # Handle legacy tuple format [object, metadata]
-        elsif service_result.is_a?(Array) && service_result.size == 2
-          object, metadata = service_result
-
-          # Build normalized hash result
-          result = metadata.dup
-          result[:success] = metadata[:success] if metadata.key?(:success)
-
-          # Store object appropriately based on type
-          if object.is_a?(Array)
-            result[:items] = object
-          elsif object.present?
-            result[:resource] = object
-          end
-
-          result
-        else
-          # Legacy hash format - return as-is
-          service_result
+        unless service_result.is_a?(BetterService::Result)
+          raise BetterService::Errors::Runtime::InvalidResultError.new(
+            "Step #{name} service must return BetterService::Result, got #{service_result.class}",
+            context: { step: name, service: service_class.name, result_class: service_result.class.name }
+          )
         end
+
+        object = service_result.resource
+        metadata = service_result.meta
+
+        # Build normalized hash result
+        result = metadata.dup
+        result[:success] = metadata[:success] if metadata.key?(:success)
+
+        # Store object appropriately based on type
+        if object.is_a?(Array)
+          result[:items] = object
+        elsif object.present?
+          result[:resource] = object
+        end
+
+        result
       end
 
       # Store successful result data in context

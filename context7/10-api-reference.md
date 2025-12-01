@@ -836,23 +836,54 @@ result = Product::CreateService.new(user, params: params).call
 
 # Boolean check
 result.success?   # => true/false
+result.failure?   # => true/false
 
 # Access data
 result.resource   # => The main object (Product)
 result.message    # => "Product created successfully"
 result.meta       # => { action: :created, success: true }
-
-# For collections
-result.items      # => Array of objects
+result.action     # => :created
 
 # Destructuring support
 resource, meta = result
 product, meta = result
 
-# Hash access
-result[:resource]
-result[:message]
-result[:metadata]
+# Convert to hash/array
+result.to_h       # => { resource: ..., meta: ... }
+result.to_ary     # => [resource, meta]
+```
+
+--------------------------------
+
+### Hash-like Interface
+
+Access result data using Hash-like methods.
+
+```ruby
+result = Product::CreateService.new(user, params: params).call
+
+# Bracket access []
+result[:resource]     # => #<Product id: 1>
+result[:meta]         # => { action: :created, success: true }
+result[:success]      # => true
+result[:message]      # => "Product created"
+result[:action]       # => :created
+result[:error_code]   # => :unauthorized (on failure)
+result[:custom_key]   # => value from meta[:custom_key]
+
+# Nested access with dig
+result.dig(:resource)                           # => #<Product>
+result.dig(:meta, :action)                      # => :created
+result.dig(:validation_errors, :name)           # => ["can't be blank"]
+result.dig(:nonexistent)                        # => nil (safe)
+
+# Key existence check
+result.key?(:resource)     # => true
+result.key?(:meta)         # => true
+result.key?(:success)      # => true
+result.key?(:action)       # => true
+result.key?(:unknown)      # => false
+result.has_key?(:resource) # => true (alias)
 ```
 
 --------------------------------

@@ -8,7 +8,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
 
   describe "generating presenter" do
     it "generates presenter file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/presenters/booking_presenter.rb" do |content|
         expect(content).to match(/class BookingPresenter < BetterService::Presenter/)
@@ -17,7 +17,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
     end
 
     it "generates test file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/presenters/booking_presenter_test.rb" do |content|
         expect(content).to match(/class BookingPresenterTest < ActiveSupport::TestCase/)
@@ -26,7 +26,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
     end
 
     it "works without attributes" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/presenters/booking_presenter.rb" do |content|
         expect(content).to match(/class BookingPresenter < BetterService::Presenter/)
@@ -35,7 +35,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
     end
 
     it "includes example methods as comments in presenter" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/presenters/booking_presenter.rb" do |content|
         expect(content).to match(/# def admin_fields/)
@@ -45,7 +45,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
     end
 
     it "test includes options handling" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/presenters/booking_presenter_test.rb" do |content|
         expect(content).to match(/test "accepts options"/)
@@ -56,7 +56,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
 
   describe "with attributes" do
     it "includes attributes in presenter" do
-      run_generator ["booking", "title:string", "price:decimal"]
+      run_generator [ "booking", "title:string", "price:decimal" ]
 
       assert_file "app/presenters/booking_presenter.rb" do |content|
         expect(content).to match(/title: object\.title/)
@@ -65,7 +65,7 @@ RSpec.describe BetterService::Generators::PresenterGenerator, type: :generator d
     end
 
     it "includes attributes in test" do
-      run_generator ["booking", "title:string", "price:decimal"]
+      run_generator [ "booking", "title:string", "price:decimal" ]
 
       assert_file "test/presenters/booking_presenter_test.rb" do |content|
         expect(content).to match(/title: "test_title"/)

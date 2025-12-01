@@ -8,7 +8,7 @@ RSpec.describe Serviceable::Generators::DestroyGenerator, type: :generator do
 
   describe "generating destroy service" do
     it "generates destroy service file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/destroy_service.rb" do |content|
         expect(content).to match(/class Booking::DestroyService < BetterService::Services::Base/)
@@ -16,7 +16,7 @@ RSpec.describe Serviceable::Generators::DestroyGenerator, type: :generator do
     end
 
     it "generates service with performed_action :destroyed" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/destroy_service.rb" do |content|
         expect(content).to match(/performed_action :destroyed/)
@@ -24,7 +24,7 @@ RSpec.describe Serviceable::Generators::DestroyGenerator, type: :generator do
     end
 
     it "generates service with transaction enabled" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/destroy_service.rb" do |content|
         expect(content).to match(/with_transaction true/)
@@ -32,7 +32,7 @@ RSpec.describe Serviceable::Generators::DestroyGenerator, type: :generator do
     end
 
     it "generates service with destroy in process_with" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/destroy_service.rb" do |content|
         expect(content).to match(/process_with do/)
@@ -41,7 +41,7 @@ RSpec.describe Serviceable::Generators::DestroyGenerator, type: :generator do
     end
 
     it "generates test file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/services/booking/destroy_service_test.rb"
     end

@@ -218,6 +218,9 @@ module BetterService
 
     # Workflow rollback failed
     ROLLBACK_FAILED = :rollback_failed
+
+    # Service returned invalid result type (not BetterService::Result)
+    INVALID_RESULT = :invalid_result
   end
 end
 
@@ -235,6 +238,7 @@ require_relative "runtime/resource_not_found_error"
 require_relative "runtime/database_error"
 require_relative "runtime/validation_error"
 require_relative "runtime/authorization_error"
+require_relative "runtime/invalid_result_error"
 
 require_relative "workflowable/configuration/workflow_configuration_error"
 require_relative "workflowable/configuration/step_not_found_error"

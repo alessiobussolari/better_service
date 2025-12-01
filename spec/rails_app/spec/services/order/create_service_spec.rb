@@ -76,7 +76,7 @@ RSpec.describe Order::CreateService do
     context "with unpublished product" do
       let(:service) do
         described_class.new(user, params: {
-          items: [{ product_id: unpublished_product.id, quantity: 1 }]
+          items: [ { product_id: unpublished_product.id, quantity: 1 } ]
         })
       end
 
@@ -90,7 +90,7 @@ RSpec.describe Order::CreateService do
     context "with non-existent product" do
       let(:service) do
         described_class.new(user, params: {
-          items: [{ product_id: 999999, quantity: 1 }]
+          items: [ { product_id: 999999, quantity: 1 } ]
         })
       end
 
@@ -113,7 +113,7 @@ RSpec.describe Order::CreateService do
       it "raises validation error for zero quantity" do
         expect {
           described_class.new(user, params: {
-            items: [{ product_id: product.id, quantity: 0 }]
+            items: [ { product_id: product.id, quantity: 0 } ]
           })
         }.to raise_error(BetterService::Errors::Runtime::ValidationError)
       end
@@ -121,7 +121,7 @@ RSpec.describe Order::CreateService do
       it "raises validation error for negative quantity" do
         expect {
           described_class.new(user, params: {
-            items: [{ product_id: product.id, quantity: -1 }]
+            items: [ { product_id: product.id, quantity: -1 } ]
           })
         }.to raise_error(BetterService::Errors::Runtime::ValidationError)
       end
@@ -131,7 +131,7 @@ RSpec.describe Order::CreateService do
       it "raises validation error" do
         expect {
           described_class.new(user, params: {
-            items: [{ product_id: product.id, quantity: 1 }],
+            items: [ { product_id: product.id, quantity: 1 } ],
             payment_method: "bitcoin"
           })
         }.to raise_error(BetterService::Errors::Runtime::ValidationError)

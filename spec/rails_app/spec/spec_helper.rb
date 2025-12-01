@@ -12,7 +12,6 @@ Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
 
 # Configure BetterService for tests
 BetterService.configure do |config|
-  config.use_result_wrapper = true
   config.instrumentation_enabled = false
 end
 

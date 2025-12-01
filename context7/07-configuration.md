@@ -61,14 +61,6 @@ BetterService.configure do |config|
   config.stats_subscriber_enabled = false
 
   # ============================================
-  # Response Format
-  # ============================================
-
-  # Return BetterService::Result objects (recommended)
-  # When false, returns [object, meta] tuples
-  config.use_result_wrapper = true
-
-  # ============================================
   # Cache Settings
   # ============================================
 
@@ -264,7 +256,6 @@ Configure differently per environment.
 BetterService.configure do |config|
   # Base settings
   config.instrumentation_enabled = true
-  config.use_result_wrapper = true
 
   case Rails.env
   when "production"

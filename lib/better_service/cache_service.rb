@@ -89,7 +89,7 @@ module BetterService
       #   contexts_for('unknown')   # => ['unknown']
       def contexts_to_invalidate(context)
         context_str = context.to_s
-        (@invalidation_map || {})[context_str] || [context_str]
+        (@invalidation_map || {})[context_str] || [ context_str ]
       end
 
       # Invalidate cache for a specific context and user
@@ -121,7 +121,7 @@ module BetterService
         return 0 unless user && context && !context.to_s.strip.empty?
 
         # Get all contexts to invalidate (cascading or single)
-        contexts = cascade ? contexts_to_invalidate(context) : [context.to_s]
+        contexts = cascade ? contexts_to_invalidate(context) : [ context.to_s ]
         total_deleted = 0
 
         contexts.each do |ctx|
@@ -164,7 +164,7 @@ module BetterService
         return 0 unless context && !context.to_s.strip.empty?
 
         # Get all contexts to invalidate (cascading or single)
-        contexts = cascade ? contexts_to_invalidate(context) : [context.to_s]
+        contexts = cascade ? contexts_to_invalidate(context) : [ context.to_s ]
         total_deleted = 0
 
         contexts.each do |ctx|
@@ -352,7 +352,7 @@ module BetterService
         # Escape special regex characters except *
         escaped = Regexp.escape(pattern.to_s)
         # Replace escaped \* with .* for regex matching
-        regex_string = escaped.gsub('\*', '.*')
+        regex_string = escaped.gsub('\*', ".*")
         Regexp.new(regex_string)
       end
 

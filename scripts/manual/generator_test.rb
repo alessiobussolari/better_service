@@ -104,11 +104,11 @@ class GeneratorTester
     # Verify service content
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::IndexService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :listed"), "Missing action_name"],
-      [service_content.include?("schema do"), "Missing schema block"],
-      [service_content.include?("optional(:page)"), "Missing pagination params"]
+      [ service_content.include?("class Product::IndexService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :listed"), "Missing action_name" ],
+      [ service_content.include?("schema do"), "Missing schema block" ],
+      [ service_content.include?("optional(:page)"), "Missing pagination params" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -147,10 +147,10 @@ class GeneratorTester
 
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::ShowService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :showed"), "Missing action_name"],
-      [service_content.include?("required(:id)"), "Missing id param"]
+      [ service_content.include?("class Product::ShowService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :showed"), "Missing action_name" ],
+      [ service_content.include?("required(:id)"), "Missing id param" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -186,10 +186,10 @@ class GeneratorTester
 
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::CreateService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :created"), "Missing action_name"],
-      [service_content.include?("with_transaction true"), "Missing transaction"]
+      [ service_content.include?("class Product::CreateService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :created"), "Missing action_name" ],
+      [ service_content.include?("with_transaction true"), "Missing transaction" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -225,11 +225,11 @@ class GeneratorTester
 
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::UpdateService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :updated"), "Missing action_name"],
-      [service_content.include?("with_transaction true"), "Missing transaction"],
-      [service_content.include?("required(:id)"), "Missing id param"]
+      [ service_content.include?("class Product::UpdateService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :updated"), "Missing action_name" ],
+      [ service_content.include?("with_transaction true"), "Missing transaction" ],
+      [ service_content.include?("required(:id)"), "Missing id param" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -265,11 +265,11 @@ class GeneratorTester
 
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::DestroyService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :destroyed"), "Missing action_name"],
-      [service_content.include?("with_transaction true"), "Missing transaction"],
-      [service_content.include?("required(:id)"), "Missing id param"]
+      [ service_content.include?("class Product::DestroyService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :destroyed"), "Missing action_name" ],
+      [ service_content.include?("with_transaction true"), "Missing transaction" ],
+      [ service_content.include?("required(:id)"), "Missing id param" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -305,9 +305,9 @@ class GeneratorTester
 
     service_content = File.read(service_file)
     checks = [
-      [service_content.include?("class Product::ApproveService"), "Missing class definition"],
-      [service_content.include?("< BetterService::Services::Base"), "Wrong base class"],
-      [service_content.include?("performed_action :approve"), "Missing action_name"]
+      [ service_content.include?("class Product::ApproveService"), "Missing class definition" ],
+      [ service_content.include?("< BetterService::Services::Base"), "Wrong base class" ],
+      [ service_content.include?("performed_action :approve"), "Missing action_name" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -379,10 +379,10 @@ class GeneratorTester
 
     workflow_content = File.read(workflow_file)
     checks = [
-      [workflow_content.include?("class OrderProcessingWorkflow"), "Missing class definition"],
-      [workflow_content.include?("< BetterService::Workflow"), "Wrong base class"],
-      [workflow_content.include?("step :create_order"), "Missing create_order step"],
-      [workflow_content.include?("step :charge_payment"), "Missing charge_payment step"]
+      [ workflow_content.include?("class OrderProcessingWorkflow"), "Missing class definition" ],
+      [ workflow_content.include?("< BetterService::Workflow"), "Wrong base class" ],
+      [ workflow_content.include?("step :create_order"), "Missing create_order step" ],
+      [ workflow_content.include?("step :charge_payment"), "Missing charge_payment step" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -418,16 +418,16 @@ class GeneratorTester
 
     locale_content = File.read(locale_file)
     checks = [
-      [locale_content.include?("en:"), "Missing en: root key"],
-      [locale_content.include?("products:"), "Missing products namespace"],
-      [locale_content.include?("services:"), "Missing services key"],
-      [locale_content.include?("create:"), "Missing create action"],
-      [locale_content.include?("update:"), "Missing update action"],
-      [locale_content.include?("destroy:"), "Missing destroy action"],
-      [locale_content.include?("index:"), "Missing index action"],
-      [locale_content.include?("show:"), "Missing show action"],
-      [locale_content.include?("success:"), "Missing success messages"],
-      [locale_content.include?("failure:"), "Missing failure messages"]
+      [ locale_content.include?("en:"), "Missing en: root key" ],
+      [ locale_content.include?("products:"), "Missing products namespace" ],
+      [ locale_content.include?("services:"), "Missing services key" ],
+      [ locale_content.include?("create:"), "Missing create action" ],
+      [ locale_content.include?("update:"), "Missing update action" ],
+      [ locale_content.include?("destroy:"), "Missing destroy action" ],
+      [ locale_content.include?("index:"), "Missing index action" ],
+      [ locale_content.include?("show:"), "Missing show action" ],
+      [ locale_content.include?("success:"), "Missing success messages" ],
+      [ locale_content.include?("failure:"), "Missing failure messages" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -466,10 +466,10 @@ class GeneratorTester
 
     presenter_content = File.read(presenter_file)
     checks = [
-      [presenter_content.include?("class ProductPresenter"), "Missing class definition"],
-      [presenter_content.include?("< BetterService::Presenter"), "Wrong base class"],
-      [presenter_content.include?("def as_json(opts = {})"), "Missing as_json method"],
-      [presenter_content.include?("object"), "Missing object reference"]
+      [ presenter_content.include?("class ProductPresenter"), "Missing class definition" ],
+      [ presenter_content.include?("< BetterService::Presenter"), "Wrong base class" ],
+      [ presenter_content.include?("def as_json(opts = {})"), "Missing as_json method" ],
+      [ presenter_content.include?("object"), "Missing object reference" ]
     ]
 
     failed_check = checks.find { |check, _| !check }
@@ -487,11 +487,11 @@ class GeneratorTester
 
     test_content = File.read(test_file)
     test_checks = [
-      [test_content.include?("class ProductPresenterTest"), "Missing test class"],
-      [test_content.include?("< ActiveSupport::TestCase"), "Wrong test base class"],
-      [test_content.include?("@presenter"), "Missing presenter instance"],
-      [test_content.include?("as_json"), "Missing as_json tests"],
-      [test_content.include?("options"), "Missing options tests"]
+      [ test_content.include?("class ProductPresenterTest"), "Missing test class" ],
+      [ test_content.include?("< ActiveSupport::TestCase"), "Wrong test base class" ],
+      [ test_content.include?("@presenter"), "Missing presenter instance" ],
+      [ test_content.include?("as_json"), "Missing as_json tests" ],
+      [ test_content.include?("options"), "Missing options tests" ]
     ]
 
     failed_test_check = test_checks.find { |check, _| !check }

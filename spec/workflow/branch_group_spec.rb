@@ -65,7 +65,7 @@ RSpec.describe BetterService::Workflows::BranchGroup do
       group.add_branch(condition: ->(ctx) { false }, name: :second)
 
       expect(group.branches.count).to eq(2)
-      expect(group.branches.map(&:name)).to eq([:first, :second])
+      expect(group.branches.map(&:name)).to eq([ :first, :second ])
     end
   end
 
@@ -172,7 +172,7 @@ RSpec.describe BetterService::Workflows::BranchGroup do
 
       result = group.call(context, user, {})
 
-      expect(result[:executed_steps].map(&:name)).to eq([:process_card])
+      expect(result[:executed_steps].map(&:name)).to eq([ :process_card ])
       expect(result[:branch_taken]).to eq(card_branch)
       expect(result[:branch_decisions]).to include("payment_routing:card_path")
     end
@@ -222,7 +222,7 @@ RSpec.describe BetterService::Workflows::BranchGroup do
 
       result = group.call(context, user, {})
 
-      expect(result[:executed_steps].map(&:name)).to eq([:default_action])
+      expect(result[:executed_steps].map(&:name)).to eq([ :default_action ])
       expect(result[:branch_decisions]).to include("test:otherwise")
     end
   end

@@ -258,13 +258,9 @@ module BetterService
     #
     # @param object [Object] The resource object
     # @param metadata [Hash] The metadata hash
-    # @return [BetterService::Result, Array] Result wrapper or [object, metadata] tuple
+    # @return [BetterService::Result] Result wrapper
     def wrap_response(object, metadata)
-      if BetterService.configuration.use_result_wrapper
-        Result.new(object, meta: metadata)
-      else
-        [object, metadata]
-      end
+      Result.new(object, meta: metadata)
     end
 
     # Extract the object from result hash

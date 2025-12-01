@@ -52,7 +52,7 @@ module BetterService
 
       let(:failing_service_class) do
         Class.new(Services::Base) do
-          schema {}
+          schema { }
 
           process_with do |_data|
             raise StandardError, "Service intentionally failed"
@@ -123,7 +123,7 @@ module BetterService
             workflow_class.new(user, params: {}).call
           }.to raise_error(Errors::Workflowable::Runtime::StepExecutionError)
 
-          expect(tracker.rollback_order).to eq([:step_two, :step_one])
+          expect(tracker.rollback_order).to eq([ :step_two, :step_one ])
         end
 
         it "unreachable steps are not rolled back" do

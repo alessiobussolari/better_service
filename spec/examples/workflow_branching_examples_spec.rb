@@ -195,7 +195,7 @@ RSpec.describe "Workflow Branching Examples", type: :workflow do
 
       expect(result[:success]).to be true
       expect(result[:metadata][:steps_executed]).to eq(
-        [:validate_order, :charge_credit_card, :verify_3d_secure, :finalize_order]
+        [ :validate_order, :charge_credit_card, :verify_3d_secure, :finalize_order ]
       )
       expect(result[:context].charge_credit_card[:charge_id]).to start_with("ch_")
     end
@@ -400,7 +400,7 @@ RSpec.describe "Workflow Branching Examples", type: :workflow do
           resource: {
             content_id: params[:content_id],
             toxicity_score: toxicity_score,
-            flagged_terms: toxicity_score > 0.5 ? ["spam", "inappropriate"] : [],
+            flagged_terms: toxicity_score > 0.5 ? [ "spam", "inappropriate" ] : [],
             analyzed_at: Time.current
           }
         }
@@ -499,11 +499,11 @@ RSpec.describe "Workflow Branching Examples", type: :workflow do
            input: ->(ctx) {
              status = if ctx.respond_to?(:auto_approve)
                         ctx.auto_approve[:status]
-                      elsif ctx.respond_to?(:queue_manual_review)
+             elsif ctx.respond_to?(:queue_manual_review)
                         ctx.queue_manual_review[:status]
-                      else
+             else
                         ctx.auto_reject[:status]
-                      end
+             end
 
              { content_id: ctx.analyze_content[:content_id], status: status }
            }
@@ -604,7 +604,7 @@ RSpec.describe "Workflow Branching Examples", type: :workflow do
       result = workflow_class.new(user, params: { product_id: 789, quantity: 5 }).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed].take(1)).to eq([:check_inventory])
+      expect(result[:metadata][:steps_executed].take(1)).to eq([ :check_inventory ])
 
       expect(
         result[:metadata][:steps_executed].include?(:ship_from_warehouse) ||

@@ -4,33 +4,33 @@ module BetterService
   module Concerns
     module Workflowable
       # Callbacks - Adds lifecycle callbacks to workflows
-    #
-    # Provides before_workflow, after_workflow, and around_step hooks
-    # that allow executing custom logic at different stages of the workflow.
-    #
-    # Example:
-    #   class OrderWorkflow < BetterService::Workflow
-    #     before_workflow :validate_prerequisites
-    #     after_workflow :cleanup_resources
-    #     around_step :log_step_execution
-    #
-    #     private
-    #
-    #     def validate_prerequisites(context)
-    #       context.fail!("Cart is empty") if context.cart_items.empty?
-    #     end
-    #
-    #     def cleanup_resources(context)
-    #       context.user.clear_cart! if context.success?
-    #     end
-    #
-    #     def log_step_execution(step, context)
-    #       start_time = Time.current
-    #       yield # Execute the step
-    #       duration = Time.current - start_time
-    #       Rails.logger.info "Step #{step.name} completed in #{duration}s"
-    #     end
-    #   end
+      #
+      # Provides before_workflow, after_workflow, and around_step hooks
+      # that allow executing custom logic at different stages of the workflow.
+      #
+      # Example:
+      #   class OrderWorkflow < BetterService::Workflow
+      #     before_workflow :validate_prerequisites
+      #     after_workflow :cleanup_resources
+      #     around_step :log_step_execution
+      #
+      #     private
+      #
+      #     def validate_prerequisites(context)
+      #       context.fail!("Cart is empty") if context.cart_items.empty?
+      #     end
+      #
+      #     def cleanup_resources(context)
+      #       context.user.clear_cart! if context.success?
+      #     end
+      #
+      #     def log_step_execution(step, context)
+      #       start_time = Time.current
+      #       yield # Execute the step
+      #       duration = Time.current - start_time
+      #       Rails.logger.info "Step #{step.name} completed in #{duration}s"
+      #     end
+      #   end
       module Callbacks
         extend ActiveSupport::Concern
 

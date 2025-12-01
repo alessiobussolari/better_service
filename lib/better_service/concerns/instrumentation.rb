@@ -55,40 +55,22 @@ module BetterService
                 result = call_without_instrumentation
                 duration = ((Time.current - start_time) * 1000).round(2) # milliseconds
 
-                # Check if result is a BetterService::Result object
-                if result.is_a?(BetterService::Result)
-                  if result.failure?
-                    # Publish service.failed event for Result failures
-                    failure_payload = build_result_failure_payload(
-                      service_name, user_id, result, duration
-                    )
-                    ActiveSupport::Notifications.instrument("service.failed", failure_payload)
-                  else
-                    # Publish service.completed event
-                    completion_payload = build_completion_payload(
-                      service_name, user_id, result, duration
-                    )
-                    ActiveSupport::Notifications.instrument("service.completed", completion_payload)
-                  end
-                # Check if result is a legacy tuple [object, metadata] with failure
-                elsif result.is_a?(Array) && result.size == 2 && result[1].is_a?(Hash)
-                  _object, metadata = result
+                # Validate that result is a BetterService::Result object
+                unless result.is_a?(BetterService::Result)
+                  raise BetterService::Errors::Runtime::InvalidResultError.new(
+                    "Service #{service_name} must return BetterService::Result, got #{result.class}",
+                    context: { service: service_name, result_class: result.class.name }
+                  )
+                end
 
-                  if metadata[:success] == false
-                    # Publish service.failed event for tuple failures
-                    failure_payload = build_tuple_failure_payload(
-                      service_name, user_id, metadata, duration
-                    )
-                    ActiveSupport::Notifications.instrument("service.failed", failure_payload)
-                  else
-                    # Publish service.completed event
-                    completion_payload = build_completion_payload(
-                      service_name, user_id, result, duration
-                    )
-                    ActiveSupport::Notifications.instrument("service.completed", completion_payload)
-                  end
+                if result.failure?
+                  # Publish service.failed event for Result failures
+                  failure_payload = build_result_failure_payload(
+                    service_name, user_id, result, duration
+                  )
+                  ActiveSupport::Notifications.instrument("service.failed", failure_payload)
                 else
-                  # Legacy hash format - publish completed event
+                  # Publish service.completed event
                   completion_payload = build_completion_payload(
                     service_name, user_id, result, duration
                   )
@@ -164,7 +146,7 @@ module BetterService
       #
       # @param service_name [String] Name of service class
       # @param user_id [Integer, String, nil] User ID
-      # @param result [Object] Service result (BetterService::Result, Array, or Hash)
+      # @param result [BetterService::Result] Service result
       # @param duration [Float] Execution duration in milliseconds
       # @return [Hash] Event payload
       def build_completion_payload(service_name, user_id, result, duration)
@@ -186,22 +168,12 @@ module BetterService
           payload[:result] = result
         end
 
-        # Include cache metadata if available
-        if result.is_a?(BetterService::Result)
-          # Result object - check meta for cache info
-          if result.meta[:cache_hit]
-            payload[:cache_hit] = result.meta[:cache_hit]
-          end
-          if result.meta[:cache_key]
-            payload[:cache_key] = result.meta[:cache_key]
-          end
-        elsif result.is_a?(Hash)
-          if result.key?(:cache_hit)
-            payload[:cache_hit] = result[:cache_hit]
-          end
-          if result.key?(:cache_key)
-            payload[:cache_key] = result[:cache_key]
-          end
+        # Include cache metadata if available from Result meta
+        if result.meta[:cache_hit]
+          payload[:cache_hit] = result.meta[:cache_hit]
+        end
+        if result.meta[:cache_key]
+          payload[:cache_key] = result.meta[:cache_key]
         end
 
         payload
@@ -233,37 +205,6 @@ module BetterService
         # Include validation errors if present
         if result.validation_errors
           payload[:validation_errors] = result.validation_errors
-        end
-
-        payload
-      end
-
-      # Build payload for service.failed event from tuple metadata
-      #
-      # @param service_name [String] Name of service class
-      # @param user_id [Integer, String, nil] User ID
-      # @param metadata [Hash] Error metadata from tuple response
-      # @param duration [Float] Execution duration in milliseconds
-      # @return [Hash] Event payload
-      def build_tuple_failure_payload(service_name, user_id, metadata, duration)
-        payload = {
-          service_name: service_name,
-          user_id: user_id,
-          duration: duration,
-          timestamp: Time.current.iso8601,
-          success: false,
-          error_class: metadata[:error_code]&.to_s || "UnknownError",
-          error_message: metadata[:error] || metadata[:message] || "Service failed"
-        }
-
-        # Include params if configured and available
-        if BetterService.configuration.instrumentation_include_args && respond_to?(:params, true)
-          payload[:params] = send(:params)
-        end
-
-        # Include validation errors if present
-        if metadata[:validation_errors]
-          payload[:validation_errors] = metadata[:validation_errors]
         end
 
         payload

@@ -51,7 +51,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :should_execute])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :should_execute ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:otherwise")
     end
   end
@@ -77,7 +77,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :final])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :final ])
       expect(result[:metadata][:branches_taken]).to include("branch_1:on_1")
     end
   end
@@ -115,7 +115,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :deeply_nested, :final])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :deeply_nested, :final ])
       expect(result[:metadata][:branches_taken].count).to eq(5)
     end
   end
@@ -141,7 +141,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :after_optional, :final])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :after_optional, :final ])
     end
   end
 
@@ -207,7 +207,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
 
       expect(result[:success]).to be true
       expect(result[:metadata][:steps_executed]).to eq(
-        [:init, :first_branch_path, :second_branch_path, :third_branch_path, :final]
+        [ :init, :first_branch_path, :second_branch_path, :third_branch_path, :final ]
       )
       expect(result[:metadata][:branches_taken].count).to eq(3)
     end
@@ -234,7 +234,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :always_execute, :also_always_execute])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :always_execute, :also_always_execute ])
     end
   end
 
@@ -318,7 +318,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :should_execute])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :should_execute ])
     end
   end
 
@@ -375,7 +375,7 @@ RSpec.describe "Workflow Branching Edge Cases", type: :workflow do
       result = workflow_class.new(user, params: {}).call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq([:init, :complex_condition_met])
+      expect(result[:metadata][:steps_executed]).to eq([ :init, :complex_condition_met ])
     end
   end
 

@@ -60,7 +60,7 @@ module BetterService
     # Supporta destructuring: resource, meta = result
     # @return [Array] [resource, meta]
     def to_ary
-      [resource, meta]
+      [ resource, meta ]
     end
 
     # Alias per compatibilità con destructuring
@@ -70,5 +70,41 @@ module BetterService
     def to_h
       { resource: resource, meta: meta }
     end
+
+    # Accesso Hash-like per compatibilità con BetterController
+    # @param key [Symbol] La chiave da accedere
+    # @return [Object, nil] Il valore associato alla chiave
+    def [](key)
+      case key
+      when :resource then resource
+      when :meta then meta
+      when :success then success?
+      when :message then message
+      when :action then action
+      else
+        meta[key]
+      end
+    end
+
+    # Accesso nested Hash-like (dig)
+    # @param keys [Array<Symbol>] Le chiavi per l'accesso nested
+    # @return [Object, nil] Il valore nested
+    def dig(*keys)
+      return nil if keys.empty?
+
+      value = self[keys.first]
+      return value if keys.size == 1
+      return nil unless value.respond_to?(:dig)
+
+      value.dig(*keys[1..])
+    end
+
+    # Verifica esistenza chiave
+    # @param key [Symbol] La chiave da verificare
+    # @return [Boolean]
+    def key?(key)
+      %i[resource meta success message action].include?(key) || meta.key?(key)
+    end
+    alias_method :has_key?, :key?
   end
 end

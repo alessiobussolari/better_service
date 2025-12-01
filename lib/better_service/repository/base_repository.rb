@@ -249,7 +249,7 @@ module BetterService
       # @param per_page [Integer] Records per page
       # @return [ActiveRecord::Relation] Paginated scope
       def paginate(scope, page:, per_page:)
-        offset_value = ([page.to_i, 1].max - 1) * per_page.to_i
+        offset_value = ([ page.to_i, 1 ].max - 1) * per_page.to_i
         scope.offset(offset_value).limit(per_page)
       end
     end

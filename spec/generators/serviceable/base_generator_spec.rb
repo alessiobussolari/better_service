@@ -8,7 +8,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "generating base service" do
     it "generates base service file" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/services/article/base_service.rb" do |content|
         expect(content).to match(/frozen_string_literal: true/)
@@ -17,7 +17,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "generates base service with RepositoryAware concern" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/services/article/base_service.rb" do |content|
         expect(content).to match(/include BetterService::Concerns::Serviceable::RepositoryAware/)
@@ -25,7 +25,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "generates base service with messages_namespace" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/services/article/base_service.rb" do |content|
         expect(content).to match(/messages_namespace :article/)
@@ -33,7 +33,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "generates base service with cache_contexts" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/services/article/base_service.rb" do |content|
         expect(content).to match(/cache_contexts \[:articles\]/)
@@ -41,7 +41,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "generates base service with repository declaration" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/services/article/base_service.rb" do |content|
         expect(content).to match(/repository :article/)
@@ -51,7 +51,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "generating repository" do
     it "generates repository file" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "app/repositories/article_repository.rb" do |content|
         expect(content).to match(/frozen_string_literal: true/)
@@ -62,7 +62,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "generating locale" do
     it "generates locale file" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "config/locales/article_services.en.yml" do |content|
         expect(content).to match(/article:/)
@@ -79,7 +79,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "generating tests" do
     it "generates base service test file" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "test/services/article/base_service_test.rb" do |content|
         expect(content).to match(/class Article::BaseServiceTest < ActiveSupport::TestCase/)
@@ -89,7 +89,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "generates repository test file" do
-      run_generator ["article"]
+      run_generator [ "article" ]
 
       assert_file "test/repositories/article_repository_test.rb" do |content|
         expect(content).to match(/class ArticleRepositoryTest < ActiveSupport::TestCase/)
@@ -100,7 +100,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "namespaced models" do
     it "handles namespaced models" do
-      run_generator ["admin/article"]
+      run_generator [ "admin/article" ]
 
       assert_file "app/services/admin/article/base_service.rb" do |content|
         expect(content).to match(/class Admin::Article::BaseService < BetterService::Services::Base/)
@@ -116,7 +116,7 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
 
   describe "skip options" do
     it "skip_repository option works" do
-      run_generator ["article", "--skip_repository"]
+      run_generator [ "article", "--skip_repository" ]
 
       assert_file "app/services/article/base_service.rb"
       assert_no_file "app/repositories/article_repository.rb"
@@ -124,14 +124,14 @@ RSpec.describe Serviceable::Generators::BaseGenerator, type: :generator do
     end
 
     it "skip_locale option works" do
-      run_generator ["article", "--skip_locale"]
+      run_generator [ "article", "--skip_locale" ]
 
       assert_file "app/services/article/base_service.rb"
       assert_no_file "config/locales/article_services.en.yml"
     end
 
     it "skip_test option works" do
-      run_generator ["article", "--skip_test"]
+      run_generator [ "article", "--skip_test" ]
 
       assert_file "app/services/article/base_service.rb"
       assert_file "app/repositories/article_repository.rb"

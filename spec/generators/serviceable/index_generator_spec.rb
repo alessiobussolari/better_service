@@ -8,7 +8,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
 
   describe "generating index service" do
     it "generates index service file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/class Booking::IndexService < BetterService::Services::Base/)
@@ -17,7 +17,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates service with performed_action :listed" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/performed_action :listed/)
@@ -25,7 +25,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates service with schema" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/schema do/)
@@ -36,7 +36,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates service with search_with block" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/search_with do/)
@@ -45,7 +45,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates service with process_with block including metadata" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/process_with do \|data\|/)
@@ -56,7 +56,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates service with respond_with block" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/index_service.rb" do |content|
         expect(content).to match(/respond_with do \|data\|/)
@@ -65,7 +65,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
     end
 
     it "generates test file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/services/booking/index_service_test.rb" do |content|
         expect(content).to match(/class Booking::IndexServiceTest < ActiveSupport::TestCase/)
@@ -76,7 +76,7 @@ RSpec.describe Serviceable::Generators::IndexGenerator, type: :generator do
 
   describe "namespaced models" do
     it "handles namespaced models" do
-      run_generator ["admin/booking"]
+      run_generator [ "admin/booking" ]
 
       assert_file "app/services/admin/booking/index_service.rb" do |content|
         expect(content).to match(/class Admin::Booking::IndexService < BetterService::Services::Base/)

@@ -145,7 +145,7 @@ RSpec.describe BetterService::Workflows::Branch do
       branch.add_step(step2)
       branch.add_step(step3)
 
-      expect(branch.steps.map(&:name)).to eq([:step1, :step2, :step3])
+      expect(branch.steps.map(&:name)).to eq([ :step1, :step2, :step3 ])
     end
 
     it "returns updated steps array" do
@@ -172,7 +172,7 @@ RSpec.describe BetterService::Workflows::Branch do
       executed_steps = branch.execute(context, user, {})
 
       expect(executed_steps.count).to eq(2)
-      expect(executed_steps.map(&:name)).to eq([:step1, :step2])
+      expect(executed_steps.map(&:name)).to eq([ :step1, :step2 ])
     end
 
     it "stores step results in context" do
@@ -252,7 +252,7 @@ RSpec.describe BetterService::Workflows::Branch do
 
       executed_steps = branch.execute(context, user, {})
 
-      expect(executed_steps.map(&:name)).to eq([:next_step])
+      expect(executed_steps.map(&:name)).to eq([ :next_step ])
     end
   end
 

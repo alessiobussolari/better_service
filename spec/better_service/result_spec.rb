@@ -159,7 +159,7 @@ RSpec.describe BetterService::Result do
 
   describe "#validation_errors" do
     context "when validation_errors is set" do
-      let(:errors) { { name: ["can't be blank"] } }
+      let(:errors) { { name: [ "can't be blank" ] } }
       subject(:result) { described_class.new(nil, meta: { validation_errors: errors }) }
 
       it "returns the validation errors" do
@@ -178,7 +178,7 @@ RSpec.describe BetterService::Result do
 
   describe "#full_messages" do
     context "when full_messages is set" do
-      let(:messages) { ["Name can't be blank"] }
+      let(:messages) { [ "Name can't be blank" ] }
       subject(:result) { described_class.new(nil, meta: { full_messages: messages }) }
 
       it "returns the full messages" do
@@ -259,7 +259,7 @@ RSpec.describe BetterService::Result do
           success: false,
           action: :failed,
           message: "Error",
-          validation_errors: { name: ["blank"] }
+          validation_errors: { name: [ "blank" ] }
         })
       end
 
@@ -269,7 +269,7 @@ RSpec.describe BetterService::Result do
         expect(meta[:success]).to be false
         expect(meta[:action]).to eq(:failed)
         expect(meta[:message]).to eq("Error")
-        expect(meta[:validation_errors]).to eq({ name: ["blank"] })
+        expect(meta[:validation_errors]).to eq({ name: [ "blank" ] })
       end
     end
   end
@@ -346,8 +346,8 @@ RSpec.describe BetterService::Result do
             success: false,
             action: :created,
             message: "Validation failed",
-            validation_errors: { name: ["can't be blank"] },
-            full_messages: ["Name can't be blank"]
+            validation_errors: { name: [ "can't be blank" ] },
+            full_messages: [ "Name can't be blank" ]
           }
         )
       end
@@ -359,17 +359,17 @@ RSpec.describe BetterService::Result do
       end
 
       it "returns validation errors" do
-        expect(result.validation_errors).to eq({ name: ["can't be blank"] })
+        expect(result.validation_errors).to eq({ name: [ "can't be blank" ] })
       end
 
       it "returns full messages" do
-        expect(result.full_messages).to eq(["Name can't be blank"])
+        expect(result.full_messages).to eq([ "Name can't be blank" ])
       end
     end
 
     context "array resource (index service)" do
       let(:resources) do
-        [dummy_resource_class.new(id: 1), dummy_resource_class.new(id: 2)]
+        [ dummy_resource_class.new(id: 1), dummy_resource_class.new(id: 2) ]
       end
 
       subject(:result) do
@@ -427,6 +427,140 @@ RSpec.describe BetterService::Result do
         expect(branched).to eq(:failure)
         expect(product).to eq(resource)
         expect(meta[:message]).to eq("Failed")
+      end
+    end
+  end
+
+  describe "Hash-like interface" do
+    let(:result_with_meta) do
+      described_class.new(
+        resource,
+        meta: { action: :created, message: "Created successfully", extra_data: { count: 5 } }
+      )
+    end
+
+    describe "#[]" do
+      it "accesses :resource" do
+        expect(result_with_meta[:resource]).to eq(resource)
+      end
+
+      it "accesses :meta" do
+        expect(result_with_meta[:meta]).to be_a(Hash)
+        expect(result_with_meta[:meta][:action]).to eq(:created)
+      end
+
+      it "accesses :success" do
+        expect(result_with_meta[:success]).to be true
+      end
+
+      it "accesses :message" do
+        expect(result_with_meta[:message]).to eq("Created successfully")
+      end
+
+      it "accesses :action from meta" do
+        expect(result_with_meta[:action]).to eq(:created)
+      end
+
+      it "accesses arbitrary meta keys" do
+        result = described_class.new(nil, meta: { custom_key: "custom_value" })
+        expect(result[:custom_key]).to eq("custom_value")
+      end
+
+      it "returns nil for unknown keys" do
+        expect(result_with_meta[:nonexistent]).to be_nil
+      end
+    end
+
+    describe "#dig" do
+      it "digs into top-level keys" do
+        expect(result_with_meta.dig(:resource)).to eq(resource)
+      end
+
+      it "digs into meta" do
+        expect(result_with_meta.dig(:meta, :action)).to eq(:created)
+      end
+
+      it "digs into nested meta data" do
+        expect(result_with_meta.dig(:extra_data, :count)).to eq(5)
+      end
+
+      it "returns nil for empty keys" do
+        expect(result_with_meta.dig).to be_nil
+      end
+
+      it "returns nil for missing keys" do
+        expect(result_with_meta.dig(:nonexistent)).to be_nil
+      end
+
+      it "returns nil for deep missing keys" do
+        expect(result_with_meta.dig(:extra_data, :nonexistent)).to be_nil
+      end
+
+      it "returns nil when intermediate is not diggable" do
+        expect(result_with_meta.dig(:success, :something)).to be_nil
+      end
+    end
+
+    describe "#key?" do
+      it "returns true for :resource" do
+        expect(result_with_meta.key?(:resource)).to be true
+      end
+
+      it "returns true for :meta" do
+        expect(result_with_meta.key?(:meta)).to be true
+      end
+
+      it "returns true for :success" do
+        expect(result_with_meta.key?(:success)).to be true
+      end
+
+      it "returns true for :message" do
+        expect(result_with_meta.key?(:message)).to be true
+      end
+
+      it "returns true for :action" do
+        expect(result_with_meta.key?(:action)).to be true
+      end
+
+      it "returns true for meta keys that exist" do
+        result = described_class.new(nil, meta: { custom_key: "value" })
+        expect(result.key?(:custom_key)).to be true
+      end
+
+      it "returns false for unknown keys" do
+        expect(result_with_meta.key?(:unknown)).to be false
+      end
+    end
+
+    describe "#has_key?" do
+      it "is an alias for key?" do
+        expect(result_with_meta.has_key?(:resource)).to be true
+        expect(result_with_meta.has_key?(:unknown)).to be false
+      end
+    end
+
+    describe "accessing nested meta via bracket and dig" do
+      it "works with safe navigation dig pattern" do
+        result = described_class.new(nil, meta: { validation_errors: { name: [ "can't be blank" ] } })
+        errors = result&.dig(:validation_errors)
+
+        expect(errors).to eq({ name: [ "can't be blank" ] })
+      end
+
+      it "works when meta key is nil" do
+        result = described_class.new(nil, meta: {})
+        errors = result&.dig(:validation_errors)
+
+        expect(errors).to be_nil
+      end
+
+      it "works with bracket access after dig" do
+        result = described_class.new(nil, meta: { validation_errors: { name: [ "can't be blank" ] } })
+
+        if result&.dig(:validation_errors)
+          name_errors = result[:validation_errors][:name]
+          expect(name_errors).to eq([ "can't be blank" ])
+        end
       end
     end
   end

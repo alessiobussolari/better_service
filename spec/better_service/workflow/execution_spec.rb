@@ -69,7 +69,7 @@ module BetterService
           result = linear_workflow_class.new(user, params: {}).call
 
           expect(result[:success]).to be true
-          expect(result[:metadata][:steps_executed]).to eq([:step_one, :step_two, :step_three])
+          expect(result[:metadata][:steps_executed]).to eq([ :step_one, :step_two, :step_three ])
         end
 
         it "stores step results in context" do
@@ -281,7 +281,7 @@ module BetterService
           workflow_class = Class.new(Base) do
             step :problematic,
                  with: Class.new(Services::Base) {
-                   schema {}
+                   schema { }
                    process_with { raise NoMethodError, "Unexpected error" }
                  }
           end

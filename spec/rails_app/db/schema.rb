@@ -18,7 +18,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_30_000001) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
-    t.index ["user_id"], name: "index_bookings_on_user_id"
+    t.index [ "user_id" ], name: "index_bookings_on_user_id"
   end
 
   create_table "order_items", force: :cascade do |t|
@@ -28,8 +28,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_30_000001) do
     t.integer "quantity", null: false
     t.decimal "unit_price", precision: 10, scale: 2, null: false
     t.datetime "updated_at", null: false
-    t.index ["order_id"], name: "index_order_items_on_order_id"
-    t.index ["product_id"], name: "index_order_items_on_product_id"
+    t.index [ "order_id" ], name: "index_order_items_on_order_id"
+    t.index [ "product_id" ], name: "index_order_items_on_product_id"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -39,9 +39,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_30_000001) do
     t.decimal "total", precision: 10, scale: 2, null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
-    t.index ["payment_method"], name: "index_orders_on_payment_method"
-    t.index ["status"], name: "index_orders_on_status"
-    t.index ["user_id"], name: "index_orders_on_user_id"
+    t.index [ "payment_method" ], name: "index_orders_on_payment_method"
+    t.index [ "status" ], name: "index_orders_on_status"
+    t.index [ "user_id" ], name: "index_orders_on_user_id"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -56,9 +56,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_30_000001) do
     t.integer "status", default: 0, null: false
     t.string "transaction_id"
     t.datetime "updated_at", null: false
-    t.index ["order_id"], name: "index_payments_on_order_id"
-    t.index ["status"], name: "index_payments_on_status"
-    t.index ["transaction_id"], name: "index_payments_on_transaction_id", unique: true
+    t.index [ "order_id" ], name: "index_payments_on_order_id"
+    t.index [ "status" ], name: "index_payments_on_status"
+    t.index [ "transaction_id" ], name: "index_payments_on_transaction_id", unique: true
   end
 
   create_table "products", force: :cascade do |t|
@@ -69,7 +69,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_30_000001) do
     t.integer "stock", default: 100, null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
-    t.index ["user_id"], name: "index_products_on_user_id"
+    t.index [ "user_id" ], name: "index_products_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|

@@ -18,7 +18,12 @@ RSpec.describe "Repository Integration", type: :integration do
   let(:user_repo) { UserRepository.new }
   let(:booking_repo) { BookingRepository.new }
 
-  after do
+  # Clean all related tables before AND after each example to ensure isolation
+  around do |example|
+    Booking.delete_all
+    Product.delete_all
+    User.delete_all
+    example.run
     Booking.delete_all
     Product.delete_all
     User.delete_all
@@ -210,7 +215,7 @@ RSpec.describe "Repository Integration", type: :integration do
     end
 
     it "eager loads associations with includes" do
-      results = user_repo.search({}, includes: [:products])
+      results = user_repo.search({}, includes: [ :products ])
 
       expect(results).to respond_to(:to_a)
       expect(results.first.products).not_to be_empty
@@ -431,7 +436,7 @@ RSpec.describe "Repository Integration", type: :integration do
         repository :product, class_name: "ProductRepository"
 
         def repository_instances
-          [product_repository, product_repository, product_repository]
+          [ product_repository, product_repository, product_repository ]
         end
       end
 

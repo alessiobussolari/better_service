@@ -163,6 +163,78 @@ module BetterService
           }.to raise_error(RuntimeError, "Rollback error")
         end
       end
+
+      describe "result type validation" do
+        let(:hash_returning_service_class) do
+          Class.new(Services::Base) do
+            schema do
+              optional(:value).maybe(:integer)
+            end
+
+            # Override call to return Hash directly (invalid)
+            def call
+              { success: true, data: "hash data" }
+            end
+          end
+        end
+
+        let(:tuple_returning_service_class) do
+          Class.new(Services::Base) do
+            schema do
+              optional(:value).maybe(:integer)
+            end
+
+            # Override call to return tuple directly (invalid)
+            def call
+              [ { id: 1 }, { success: true } ]
+            end
+          end
+        end
+
+        it "raises InvalidResultError when service returns Hash" do
+          step = described_class.new(
+            name: :invalid_step,
+            service_class: hash_returning_service_class
+          )
+
+          expect {
+            step.call(context, user)
+          }.to raise_error(Errors::Runtime::InvalidResultError) do |error|
+            expect(error.code).to eq(:invalid_result)
+            expect(error.message).to include("must return BetterService::Result")
+            expect(error.context[:step]).to eq(:invalid_step)
+            expect(error.context[:result_class]).to eq("Hash")
+          end
+        end
+
+        it "raises InvalidResultError when service returns tuple Array" do
+          step = described_class.new(
+            name: :invalid_step,
+            service_class: tuple_returning_service_class
+          )
+
+          expect {
+            step.call(context, user)
+          }.to raise_error(Errors::Runtime::InvalidResultError) do |error|
+            expect(error.code).to eq(:invalid_result)
+            expect(error.message).to include("must return BetterService::Result")
+            expect(error.context[:step]).to eq(:invalid_step)
+            expect(error.context[:result_class]).to eq("Array")
+          end
+        end
+
+        it "accepts valid BetterService::Result" do
+          step = described_class.new(
+            name: :valid_step,
+            service_class: mock_service_class
+          )
+
+          result = step.call(context, user)
+
+          expect(result[:success]).to be true
+          expect(context.valid_step).to eq({ value: 42 })
+        end
+      end
     end
   end
 end

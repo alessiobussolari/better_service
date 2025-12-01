@@ -182,11 +182,11 @@ module BetterService
 
       it "merges additional data" do
         service = Services::Base.new(user)
-        result = service.send(:success_result, "Done", { items: [1, 2, 3], count: 3 })
+        result = service.send(:success_result, "Done", { items: [ 1, 2, 3 ], count: 3 })
 
         expect(result[:success]).to be true
         expect(result[:message]).to eq("Done")
-        expect(result[:items]).to eq([1, 2, 3])
+        expect(result[:items]).to eq([ 1, 2, 3 ])
         expect(result[:count]).to eq(3)
       end
 
@@ -282,7 +282,7 @@ module BetterService
         service = test_service_class.new(user)
         service.call
 
-        expect(service.phases_executed).to eq([:search, :process, :transform, :respond])
+        expect(service.phases_executed).to eq([ :search, :process, :transform, :respond ])
       end
 
       it "passes data through phases correctly" do
@@ -303,7 +303,7 @@ module BetterService
       context "with unexpected error" do
         let(:error_service_class) do
           Class.new(Services::Base) do
-            schema {}
+            schema { }
 
             def search
               raise StandardError, "Database connection failed"
@@ -480,7 +480,7 @@ module BetterService
       let(:block_based_service_class) do
         Class.new(Services::Base) do
           search_with do
-            { users: ["Alice", "Bob"] }
+            { users: [ "Alice", "Bob" ] }
           end
 
           process_with do |data|
@@ -548,73 +548,34 @@ module BetterService
     end
 
     # ========================================
-    # use_result_wrapper Configuration Tests
+    # Result Response Tests
     # ========================================
 
-    describe "use_result_wrapper configuration" do
-      after do
-        BetterService.reset_configuration!
-      end
+    describe "result response" do
+      it "always returns Result object" do
+        service = Services::Base.new(user)
+        result = service.call
 
-      context "when use_result_wrapper is true (default)" do
-        before { BetterService.reset_configuration! }
-
-        it "returns Result object" do
-          service = Services::Base.new(user)
-          result = service.call
-
-          expect(result).to be_a(BetterService::Result)
-          expect(result).to respond_to(:resource)
-          expect(result).to respond_to(:meta)
-          expect(result).to respond_to(:success?)
-        end
-      end
-
-      context "when use_result_wrapper is false" do
-        before do
-          BetterService.configure do |config|
-            config.use_result_wrapper = false
-          end
-        end
-
-        it "returns tuple" do
-          service = Services::Base.new(user)
-          result = service.call
-
-          expect(result).to be_an(Array)
-          expect(result.size).to eq(2)
-          object, meta = result
-          expect(meta).to be_a(Hash)
-          expect(meta).to have_key(:success)
-        end
+        expect(result).to be_a(BetterService::Result)
+        expect(result).to respond_to(:resource)
+        expect(result).to respond_to(:meta)
+        expect(result).to respond_to(:success?)
       end
 
       describe "destructuring support" do
-        it "both Result and tuple support destructuring" do
-          # Test with Result wrapper (default)
-          BetterService.reset_configuration!
+        it "Result supports destructuring" do
+          service = Services::Base.new(user)
+          _object, meta = service.call
 
-          service1 = Services::Base.new(user)
-          _object1, meta1 = service1.call
-
-          expect(meta1).to be_a(Hash)
-          expect(meta1[:success]).to be true
-
-          # Test with tuple
-          BetterService.configure { |c| c.use_result_wrapper = false }
-
-          service2 = Services::Base.new(user)
-          _object2, meta2 = service2.call
-
-          expect(meta2).to be_a(Hash)
-          expect(meta2[:success]).to be true
+          expect(meta).to be_a(Hash)
+          expect(meta[:success]).to be true
         end
       end
 
       describe "error responses" do
         let(:error_service_class) do
           Class.new(Services::Base) do
-            schema {}
+            schema { }
 
             def search
               raise StandardError, "Test error"
@@ -622,22 +583,845 @@ module BetterService
           end
         end
 
-        it "respects use_result_wrapper with Result" do
-          BetterService.reset_configuration!
+        it "returns Result on success" do
+          result = Services::Base.new(user).call
+          expect(result).to be_a(BetterService::Result)
+          expect(result).to be_success
+        end
 
+        it "returns Result on failure" do
           result = error_service_class.new(user).call
           expect(result).to be_a(BetterService::Result)
           expect(result).to be_failure
         end
+      end
+    end
 
-        it "respects use_result_wrapper with tuple" do
-          BetterService.configure { |c| c.use_result_wrapper = false }
+    # ========================================
+    # should_auto_invalidate_cache? Tests
+    # ========================================
 
-          result = error_service_class.new(user).call
-          expect(result).to be_an(Array)
-          _object, meta = result
-          expect(meta[:success]).to be false
+    describe "#should_auto_invalidate_cache?" do
+      context "early returns" do
+        it "returns false when _auto_invalidate_cache is false" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache false
+            cache_contexts "test_context"
+            performed_action :created
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
         end
+
+        it "returns false when class does not respond to _cache_contexts" do
+          service = Services::Base.new(user)
+          # Services::Base doesn't have auto_invalidate enabled
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+
+        it "returns false when _cache_contexts is empty" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            # No cache_contexts defined
+            performed_action :created
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+
+        it "returns false when _cache_contexts is nil" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            performed_action :created
+          end
+          service_class._cache_contexts = nil
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+      end
+
+      context "write action detection by action name" do
+        it "returns true for :created action" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :created
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be true
+        end
+
+        it "returns true for :updated action" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :updated
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be true
+        end
+
+        it "returns true for :destroyed action" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :destroyed
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be true
+        end
+
+        it "returns false for non-write action like :listed" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :listed
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+
+        it "returns false for non-write action like :showed" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :showed
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+      end
+
+      context "class name pattern fallback" do
+        it "returns true for CreateService class name" do
+          # Can't easily test anonymous class name, but we can test the pattern logic
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            # No performed_action, so will fall back to class name check
+          end
+
+          # Anonymous classes don't have a name that matches pattern
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+
+        it "returns false for non-matching class name" do
+          service_class = Class.new(Services::Base) do
+            auto_invalidate_cache true
+            cache_contexts "products"
+            performed_action :custom_action
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:should_auto_invalidate_cache?)).to be false
+        end
+      end
+    end
+
+    # ========================================
+    # build_success_metadata Tests
+    # ========================================
+
+    describe "#build_success_metadata" do
+      it "defaults success to true when not provided" do
+        service = Services::Base.new(user)
+        result = { message: "Test message" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:success]).to be true
+      end
+
+      it "uses success from result when provided as true" do
+        service = Services::Base.new(user)
+        result = { success: true, message: "Success" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:success]).to be true
+      end
+
+      it "uses success from result when provided as false" do
+        service = Services::Base.new(user)
+        result = { success: false, message: "Failed" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:success]).to be false
+      end
+
+      it "includes action_name from class" do
+        service_class = Class.new(Services::Base) do
+          performed_action :test_action
+        end
+
+        service = service_class.new(user)
+        result = { message: "Test" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:action]).to eq(:test_action)
+      end
+
+      it "action is nil when not set" do
+        service = Services::Base.new(user)
+        result = { message: "Test" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:action]).to be_nil
+      end
+
+      it "includes message from result" do
+        service = Services::Base.new(user)
+        result = { message: "Custom message" }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:message]).to eq("Custom message")
+      end
+
+      it "merges additional metadata when Hash" do
+        service = Services::Base.new(user)
+        result = {
+          message: "Test",
+          metadata: { extra: "data", count: 5 }
+        }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:extra]).to eq("data")
+        expect(metadata[:count]).to eq(5)
+      end
+
+      it "ignores metadata when not a Hash" do
+        service = Services::Base.new(user)
+        result = {
+          message: "Test",
+          metadata: "not a hash"
+        }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata).not_to have_key(:metadata)
+        expect(metadata[:success]).to be true
+      end
+
+      it "ignores nil metadata" do
+        service = Services::Base.new(user)
+        result = {
+          message: "Test",
+          metadata: nil
+        }
+        metadata = service.send(:build_success_metadata, result)
+
+        expect(metadata[:success]).to be true
+      end
+
+      context "with failed object containing errors" do
+        let(:mock_object_class) do
+          Class.new do
+            attr_reader :errors
+
+            def initialize(with_errors: true)
+              @errors = with_errors ? MockErrors.new({ name: [ "can't be blank" ] }) : MockErrors.new({})
+            end
+          end
+        end
+
+        let(:mock_errors_class) do
+          Class.new do
+            attr_reader :messages, :full_messages
+
+            def initialize(errors_hash)
+              @messages = errors_hash
+              @full_messages = errors_hash.flat_map { |k, msgs| msgs.map { |m| "#{k} #{m}" } }
+            end
+
+            def any?
+              @messages.any?
+            end
+          end
+        end
+
+        before do
+          stub_const("MockErrors", mock_errors_class)
+        end
+
+        it "adds validation_errors when success is false and object has errors" do
+          service = Services::Base.new(user)
+          mock_obj = mock_object_class.new(with_errors: true)
+          result = {
+            success: false,
+            message: "Failed",
+            object: mock_obj
+          }
+          metadata = service.send(:build_success_metadata, result)
+
+          expect(metadata[:validation_errors]).to eq({ name: [ "can't be blank" ] })
+          expect(metadata[:full_messages]).to eq([ "name can't be blank" ])
+        end
+
+        it "does not add validation_errors when success is true" do
+          service = Services::Base.new(user)
+          mock_obj = mock_object_class.new(with_errors: true)
+          result = {
+            success: true,
+            message: "Success",
+            object: mock_obj
+          }
+          metadata = service.send(:build_success_metadata, result)
+
+          expect(metadata).not_to have_key(:validation_errors)
+        end
+
+        it "does not add validation_errors when object has no errors" do
+          service = Services::Base.new(user)
+          mock_obj = mock_object_class.new(with_errors: false)
+          result = {
+            success: false,
+            message: "Failed",
+            object: mock_obj
+          }
+          metadata = service.send(:build_success_metadata, result)
+
+          expect(metadata).not_to have_key(:validation_errors)
+        end
+
+        it "does not add validation_errors when object does not respond to errors" do
+          service = Services::Base.new(user)
+          result = {
+            success: false,
+            message: "Failed",
+            object: "plain string"
+          }
+          metadata = service.send(:build_success_metadata, result)
+
+          expect(metadata).not_to have_key(:validation_errors)
+        end
+      end
+    end
+
+    # ========================================
+    # format_errors_for_response Tests
+    # ========================================
+
+    describe "#format_errors_for_response" do
+      it "formats Hash with array values" do
+        service = Services::Base.new(user)
+        errors = { name: [ "can't be blank", "is too short" ], email: [ "is invalid" ] }
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to be_an(Array)
+        expect(result.length).to eq(3)
+        expect(result).to include({ key: "name", message: "can't be blank" })
+        expect(result).to include({ key: "name", message: "is too short" })
+        expect(result).to include({ key: "email", message: "is invalid" })
+      end
+
+      it "formats Hash with single value wrapped in Array" do
+        service = Services::Base.new(user)
+        errors = { name: [ "can't be blank" ] }
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to eq([ { key: "name", message: "can't be blank" } ])
+      end
+
+      it "formats Hash with non-array value" do
+        service = Services::Base.new(user)
+        errors = { name: "can't be blank" }
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to eq([ { key: "name", message: "can't be blank" } ])
+      end
+
+      it "formats Array of Hashes with key and message" do
+        service = Services::Base.new(user)
+        errors = [ { key: "name", message: "is invalid" }, { key: "email", message: "is taken" } ]
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to eq(errors)
+      end
+
+      it "formats Array of Strings as base errors" do
+        service = Services::Base.new(user)
+        errors = [ "Something went wrong", "Another error" ]
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to eq([
+          { key: "base", message: "Something went wrong" },
+          { key: "base", message: "Another error" }
+        ])
+      end
+
+      it "formats Array with mixed types" do
+        service = Services::Base.new(user)
+        errors = [
+          { key: "name", message: "is invalid" },
+          "General error",
+          123
+        ]
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result).to eq([
+          { key: "name", message: "is invalid" },
+          { key: "base", message: "General error" },
+          { key: "base", message: "123" }
+        ])
+      end
+
+      it "returns empty array for nil" do
+        service = Services::Base.new(user)
+        result = service.send(:format_errors_for_response, nil)
+
+        expect(result).to eq([])
+      end
+
+      it "returns empty array for empty hash" do
+        service = Services::Base.new(user)
+        result = service.send(:format_errors_for_response, {})
+
+        expect(result).to eq([])
+      end
+
+      it "returns empty array for empty array" do
+        service = Services::Base.new(user)
+        result = service.send(:format_errors_for_response, [])
+
+        expect(result).to eq([])
+      end
+
+      it "returns empty array for unsupported types" do
+        service = Services::Base.new(user)
+
+        expect(service.send(:format_errors_for_response, "string")).to eq([])
+        expect(service.send(:format_errors_for_response, 123)).to eq([])
+        expect(service.send(:format_errors_for_response, :symbol)).to eq([])
+      end
+
+      it "converts symbol keys to strings" do
+        service = Services::Base.new(user)
+        errors = { name_field: [ "error" ] }
+        result = service.send(:format_errors_for_response, errors)
+
+        expect(result[0][:key]).to eq("name_field")
+      end
+    end
+
+    # ========================================
+    # extract_object Tests
+    # ========================================
+
+    describe "#extract_object" do
+      it "extracts :object when present" do
+        service = Services::Base.new(user)
+        result = { object: "my_object", resource: "resource", items: [ "items" ] }
+
+        expect(service.send(:extract_object, result)).to eq("my_object")
+      end
+
+      it "extracts :resource when :object not present" do
+        service = Services::Base.new(user)
+        result = { resource: "my_resource", items: [ "items" ] }
+
+        expect(service.send(:extract_object, result)).to eq("my_resource")
+      end
+
+      it "extracts :items when :object and :resource not present" do
+        service = Services::Base.new(user)
+        result = { items: [ "item1", "item2" ] }
+
+        expect(service.send(:extract_object, result)).to eq([ "item1", "item2" ])
+      end
+
+      it "returns nil when none present" do
+        service = Services::Base.new(user)
+        result = { message: "test" }
+
+        expect(service.send(:extract_object, result)).to be_nil
+      end
+
+      it "prefers :object over :resource" do
+        service = Services::Base.new(user)
+        result = { object: nil, resource: "resource" }
+
+        # object is nil but present as key, so returns nil (nil || "resource" = "resource")
+        # Actually the code does result[:object] || result[:resource], so nil || "resource" = "resource"
+        expect(service.send(:extract_object, result)).to eq("resource")
+      end
+
+      it "handles empty result hash" do
+        service = Services::Base.new(user)
+        expect(service.send(:extract_object, {})).to be_nil
+      end
+    end
+
+    # ========================================
+    # error? Tests
+    # ========================================
+
+    describe "#error?" do
+      it "returns truthy when data has :error key" do
+        service = Services::Base.new(user)
+        data = { error: "Something went wrong" }
+
+        expect(service.send(:error?, data)).to be_truthy
+      end
+
+      it "returns truthy when data has success: false" do
+        service = Services::Base.new(user)
+        data = { success: false }
+
+        expect(service.send(:error?, data)).to be_truthy
+      end
+
+      it "returns falsy when data has success: true" do
+        service = Services::Base.new(user)
+        data = { success: true }
+
+        expect(service.send(:error?, data)).to be_falsy
+      end
+
+      it "returns falsy for empty hash" do
+        service = Services::Base.new(user)
+        expect(service.send(:error?, {})).to be_falsy
+      end
+
+      it "returns falsy for non-hash" do
+        service = Services::Base.new(user)
+        expect(service.send(:error?, "string")).to be_falsy
+        expect(service.send(:error?, nil)).to be_falsy
+        expect(service.send(:error?, [])).to be_falsy
+      end
+
+      it "returns truthy when both error and success: false" do
+        service = Services::Base.new(user)
+        data = { error: "Error", success: false }
+
+        expect(service.send(:error?, data)).to be_truthy
+      end
+    end
+
+    # ========================================
+    # failure_result Tests
+    # ========================================
+
+    describe "#failure_result" do
+      it "returns hash with success false" do
+        service = Services::Base.new(user)
+        result = service.send(:failure_result, "Operation failed")
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq("Operation failed")
+      end
+
+      it "formats errors using format_errors_for_response" do
+        service = Services::Base.new(user)
+        result = service.send(:failure_result, "Failed", { name: [ "is invalid" ] })
+
+        expect(result[:errors]).to eq([ { key: "name", message: "is invalid" } ])
+      end
+
+      it "handles empty errors" do
+        service = Services::Base.new(user)
+        result = service.send(:failure_result, "Failed", {})
+
+        expect(result[:errors]).to eq([])
+      end
+
+      it "handles nil errors" do
+        service = Services::Base.new(user)
+        result = service.send(:failure_result, "Failed")
+
+        expect(result[:errors]).to eq([])
+      end
+    end
+
+    # ========================================
+    # validation_failure_result Tests
+    # ========================================
+
+    describe "#validation_failure_result" do
+      let(:mock_resource_class) do
+        Class.new do
+          attr_reader :errors
+
+          def initialize
+            @errors = MockModelErrors.new([
+              MockModelError.new(:name, "can't be blank"),
+              MockModelError.new(:email, "is invalid")
+            ])
+          end
+        end
+      end
+
+      let(:mock_model_error_class) do
+        Struct.new(:attribute, :message)
+      end
+
+      let(:mock_model_errors_class) do
+        Class.new do
+          include Enumerable
+
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def each(&block)
+            @errors.each(&block)
+          end
+
+          def blank?
+            @errors.empty?
+          end
+        end
+      end
+
+      before do
+        stub_const("MockModelError", mock_model_error_class)
+        stub_const("MockModelErrors", mock_model_errors_class)
+      end
+
+      it "returns hash with success false" do
+        service = Services::Base.new(user)
+        resource = mock_resource_class.new
+        result = service.send(:validation_failure_result, resource)
+
+        expect(result[:success]).to be false
+      end
+
+      it "includes failed_resource" do
+        service = Services::Base.new(user)
+        resource = mock_resource_class.new
+        result = service.send(:validation_failure_result, resource)
+
+        expect(result[:failed_resource]).to eq(resource)
+      end
+
+      it "formats model validation errors" do
+        service = Services::Base.new(user)
+        resource = mock_resource_class.new
+        result = service.send(:validation_failure_result, resource)
+
+        expect(result[:errors]).to include({ key: "name", message: "can't be blank" })
+        expect(result[:errors]).to include({ key: "email", message: "is invalid" })
+      end
+    end
+
+    # ========================================
+    # format_model_validation_errors Tests
+    # ========================================
+
+    describe "#format_model_validation_errors" do
+      let(:mock_model_error_class) do
+        Struct.new(:attribute, :message)
+      end
+
+      let(:mock_model_errors_class) do
+        Class.new do
+          include Enumerable
+
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def each(&block)
+            @errors.each(&block)
+          end
+
+          def blank?
+            @errors.empty?
+          end
+        end
+      end
+
+      before do
+        stub_const("MockModelError", mock_model_error_class)
+        stub_const("MockModelErrors", mock_model_errors_class)
+      end
+
+      it "formats ActiveModel::Errors into array of hashes" do
+        service = Services::Base.new(user)
+        errors = MockModelErrors.new([
+          MockModelError.new(:name, "can't be blank"),
+          MockModelError.new(:email, "is invalid")
+        ])
+
+        result = service.send(:format_model_validation_errors, errors)
+
+        expect(result).to eq([
+          { key: "name", message: "can't be blank" },
+          { key: "email", message: "is invalid" }
+        ])
+      end
+
+      it "converts symbol attributes to strings" do
+        service = Services::Base.new(user)
+        errors = MockModelErrors.new([
+          MockModelError.new(:first_name, "is required")
+        ])
+
+        result = service.send(:format_model_validation_errors, errors)
+
+        expect(result[0][:key]).to eq("first_name")
+      end
+
+      it "returns empty array for blank errors" do
+        service = Services::Base.new(user)
+        errors = MockModelErrors.new([])
+
+        result = service.send(:format_model_validation_errors, errors)
+
+        expect(result).to eq([])
+      end
+
+      it "returns empty array for nil" do
+        service = Services::Base.new(user)
+        result = service.send(:format_model_validation_errors, nil)
+
+        expect(result).to eq([])
+      end
+    end
+
+    # ========================================
+    # safe_params_to_hash Tests
+    # ========================================
+
+    describe "#safe_params_to_hash" do
+      it "returns empty hash for nil" do
+        service = Services::Base.new(user)
+        expect(service.send(:safe_params_to_hash, nil)).to eq({})
+      end
+
+      it "converts ActionController::Parameters to hash with symbol keys" do
+        ac_params = ActionController::Parameters.new("name" => "Test", "age" => 25)
+        service = Services::Base.new(user)
+        result = service.send(:safe_params_to_hash, ac_params)
+
+        expect(result).to eq({ name: "Test", age: 25 })
+      end
+
+      it "converts hash with string keys to symbol keys" do
+        service = Services::Base.new(user)
+        result = service.send(:safe_params_to_hash, { "name" => "Test" })
+
+        expect(result).to eq({ name: "Test" })
+      end
+
+      it "keeps symbol keys unchanged" do
+        service = Services::Base.new(user)
+        result = service.send(:safe_params_to_hash, { name: "Test" })
+
+        expect(result).to eq({ name: "Test" })
+      end
+
+      it "handles nested hashes" do
+        service = Services::Base.new(user)
+        result = service.send(:safe_params_to_hash, { "user" => { "name" => "Test" } })
+
+        expect(result).to eq({ user: { name: "Test" } })
+      end
+
+      it "returns empty hash for unsupported types" do
+        service = Services::Base.new(user)
+        expect(service.send(:safe_params_to_hash, "string")).to eq({})
+        expect(service.send(:safe_params_to_hash, 123)).to eq({})
+        expect(service.send(:safe_params_to_hash, [])).to eq({})
+      end
+    end
+
+    # ========================================
+    # auto_invalidate_cache DSL Tests
+    # ========================================
+
+    describe ".auto_invalidate_cache DSL" do
+      it "defaults to false" do
+        expect(Services::Base._auto_invalidate_cache).to be false
+      end
+
+      it "sets _auto_invalidate_cache to true when called without argument" do
+        service_class = Class.new(Services::Base) do
+          auto_invalidate_cache
+        end
+
+        expect(service_class._auto_invalidate_cache).to be true
+      end
+
+      it "sets _auto_invalidate_cache to provided value" do
+        service_class = Class.new(Services::Base) do
+          auto_invalidate_cache false
+        end
+
+        expect(service_class._auto_invalidate_cache).to be false
+      end
+
+      it "is inherited by subclasses" do
+        parent_class = Class.new(Services::Base) do
+          auto_invalidate_cache true
+        end
+
+        subclass = Class.new(parent_class)
+
+        expect(subclass._auto_invalidate_cache).to be true
+      end
+
+      it "can be overridden in subclass" do
+        parent_class = Class.new(Services::Base) do
+          auto_invalidate_cache true
+        end
+
+        subclass = Class.new(parent_class) do
+          auto_invalidate_cache false
+        end
+
+        expect(parent_class._auto_invalidate_cache).to be true
+        expect(subclass._auto_invalidate_cache).to be false
+      end
+    end
+
+    # ========================================
+    # performed_action DSL Tests
+    # ========================================
+
+    describe ".performed_action DSL" do
+      it "converts string to symbol" do
+        service_class = Class.new(Services::Base) do
+          performed_action "created"
+        end
+
+        expect(service_class._action_name).to eq(:created)
+      end
+
+      it "keeps symbol as symbol" do
+        service_class = Class.new(Services::Base) do
+          performed_action :updated
+        end
+
+        expect(service_class._action_name).to eq(:updated)
+      end
+
+      it "is inherited by subclasses" do
+        parent_class = Class.new(Services::Base) do
+          performed_action :parent_action
+        end
+
+        subclass = Class.new(parent_class)
+
+        expect(subclass._action_name).to eq(:parent_action)
+      end
+
+      it "can be overridden in subclass" do
+        parent_class = Class.new(Services::Base) do
+          performed_action :parent_action
+        end
+
+        subclass = Class.new(parent_class) do
+          performed_action :child_action
+        end
+
+        expect(parent_class._action_name).to eq(:parent_action)
+        expect(subclass._action_name).to eq(:child_action)
       end
     end
   end

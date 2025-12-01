@@ -8,7 +8,7 @@ RSpec.describe Serviceable::Generators::ShowGenerator, type: :generator do
 
   describe "generating show service" do
     it "generates show service file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/show_service.rb" do |content|
         expect(content).to match(/class Booking::ShowService < BetterService::Services::Base/)
@@ -17,7 +17,7 @@ RSpec.describe Serviceable::Generators::ShowGenerator, type: :generator do
     end
 
     it "generates service with performed_action :showed" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/show_service.rb" do |content|
         expect(content).to match(/performed_action :showed/)
@@ -25,7 +25,7 @@ RSpec.describe Serviceable::Generators::ShowGenerator, type: :generator do
     end
 
     it "generates service with required id schema" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/show_service.rb" do |content|
         expect(content).to match(/schema do/)
@@ -34,7 +34,7 @@ RSpec.describe Serviceable::Generators::ShowGenerator, type: :generator do
     end
 
     it "generates service with find in search_with" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "app/services/booking/show_service.rb" do |content|
         expect(content).to match(/search_with do/)
@@ -43,7 +43,7 @@ RSpec.describe Serviceable::Generators::ShowGenerator, type: :generator do
     end
 
     it "generates test file" do
-      run_generator ["booking"]
+      run_generator [ "booking" ]
 
       assert_file "test/services/booking/show_service_test.rb" do |content|
         expect(content).to match(/class Booking::ShowServiceTest < ActiveSupport::TestCase/)

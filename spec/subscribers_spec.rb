@@ -335,6 +335,69 @@ RSpec.describe "Subscribers" do
     end
   end
 
+  describe BetterService::Subscribers::StatsSubscriber, "Edge Cases" do
+    it "summary returns zeros when stats is empty" do
+      BetterService::Subscribers::StatsSubscriber.reset!
+
+      summary = BetterService::Subscribers::StatsSubscriber.summary
+
+      expect(summary[:total_services]).to eq(0)
+      expect(summary[:total_executions]).to eq(0)
+      expect(summary[:total_successes]).to eq(0)
+      expect(summary[:total_failures]).to eq(0)
+      expect(summary[:success_rate]).to eq(0)
+      expect(summary[:avg_duration]).to eq(0)
+      expect(summary[:cache_hit_rate]).to eq(0)
+    end
+
+    it "stats_for returns nil for unknown service" do
+      BetterService::Subscribers::StatsSubscriber.reset!
+
+      stats = BetterService::Subscribers::StatsSubscriber.stats_for("NonExistentService")
+
+      expect(stats).to be_nil
+    end
+
+    it "reset clears subscriptions" do
+      # Ensure we have subscriptions
+      BetterService::Subscribers::StatsSubscriber.attach
+
+      # Reset should clear them
+      BetterService::Subscribers::StatsSubscriber.reset!
+
+      expect(BetterService::Subscribers::StatsSubscriber.subscriptions).to eq([])
+    end
+  end
+
+  describe BetterService::Subscribers::LogSubscriber, "Edge Cases" do
+    it "detach handles nil subscriptions gracefully" do
+      # Force subscriptions to nil
+      BetterService::Subscribers::LogSubscriber.instance_variable_set(:@subscriptions, nil)
+
+      # Should not raise
+      expect { BetterService::Subscribers::LogSubscriber.detach }.not_to raise_error
+
+      # Should set subscriptions to empty array
+      expect(BetterService::Subscribers::LogSubscriber.subscriptions).to eq([])
+    end
+
+    it "detach can be called multiple times" do
+      BetterService::Subscribers::LogSubscriber.attach
+      BetterService::Subscribers::LogSubscriber.detach
+      BetterService::Subscribers::LogSubscriber.detach
+
+      expect(BetterService::Subscribers::LogSubscriber.subscriptions).to eq([])
+    end
+
+    it "attach initializes subscriptions array if nil" do
+      BetterService::Subscribers::LogSubscriber.instance_variable_set(:@subscriptions, nil)
+      BetterService::Subscribers::LogSubscriber.attach
+
+      expect(BetterService::Subscribers::LogSubscriber.subscriptions).to be_an(Array)
+      expect(BetterService::Subscribers::LogSubscriber.subscriptions).not_to be_empty
+    end
+  end
+
   describe "Multiple Services" do
     it "tracks different services separately" do
       service1 = SubscribersTestService.new(user, params: {})

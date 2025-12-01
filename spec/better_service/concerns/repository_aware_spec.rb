@@ -67,7 +67,7 @@ module BetterService
             end
 
             def search(predicates = {}, **options)
-              [MockProduct.new(id: 1, name: "Test Product")]
+              [ MockProduct.new(id: 1, name: "Test Product") ]
             end
 
             def create!(attrs)
@@ -81,7 +81,7 @@ module BetterService
             end
 
             def search(predicates = {}, **options)
-              [MockUser.new(id: 1, email: "test@example.com")]
+              [ MockUser.new(id: 1, email: "test@example.com") ]
             end
           end
 

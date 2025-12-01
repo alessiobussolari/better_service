@@ -145,7 +145,7 @@ RSpec.describe "Workflow Branching Performance", type: :workflow do
             ctx.user.id > 0 &&
             ctx.user.name.present? &&
             ctx.init[:executed] == true &&
-            [1, 2, 3, 4, 5].include?(ctx.user.id) &&
+            [ 1, 2, 3, 4, 5 ].include?(ctx.user.id) &&
             ctx.user.name.length > 3 &&
             Time.current.wday.between?(0, 6)
           } do

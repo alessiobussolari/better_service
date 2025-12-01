@@ -310,3 +310,65 @@ end
 ```
 
 --------------------------------
+
+## Hash-like Interface
+
+### Bracket Access `[]`
+
+Access result data using bracket notation.
+
+```ruby
+result = Product::CreateService.new(user, params: params).call
+
+# Direct access to core attributes
+result[:resource]     # => #<Product id: 1>
+result[:meta]         # => { action: :created, success: true }
+result[:success]      # => true
+result[:message]      # => "Product created"
+result[:action]       # => :created
+
+# Access any meta key
+result[:error_code]   # => :unauthorized (on failure)
+result[:custom_key]   # => value from meta[:custom_key]
+```
+
+--------------------------------
+
+### Nested Access `dig`
+
+Access nested data safely using `dig`.
+
+```ruby
+result = service.call
+
+# Single level
+result.dig(:resource)          # => #<Product>
+result.dig(:meta)              # => { action: :created, success: true }
+
+# Nested access into meta
+result.dig(:meta, :action)                      # => :created
+result.dig(:validation_errors, :name)           # => ["can't be blank"]
+
+# Safe nil handling
+result.dig(:nonexistent)                        # => nil
+result.dig(:meta, :missing_key)                 # => nil
+```
+
+--------------------------------
+
+### Key Check `key?`
+
+Check if a key exists in the result.
+
+```ruby
+result.key?(:resource)     # => true
+result.key?(:meta)         # => true
+result.key?(:success)      # => true
+result.key?(:action)       # => true
+result.key?(:unknown)      # => false
+
+# Alias
+result.has_key?(:resource) # => true
+```
+
+--------------------------------

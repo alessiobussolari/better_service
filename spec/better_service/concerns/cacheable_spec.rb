@@ -98,7 +98,7 @@ module BetterService
         end
 
         it "cache_contexts DSL sets _cache_contexts" do
-          expect(cached_service_class._cache_contexts).to eq(["bookings", "sidebar"])
+          expect(cached_service_class._cache_contexts).to eq([ "bookings", "sidebar" ])
         end
 
         it "cache attributes have correct defaults" do
@@ -115,6 +115,36 @@ module BetterService
         it "cache_enabled? returns false when no cache_key" do
           service = Services::Base.new(user)
           expect(service.send(:cache_enabled?)).to be false
+        end
+
+        # Mutation-killing tests
+        it "cache_enabled? returns false for empty string cache_key" do
+          service_class = Class.new(Services::Base) do
+            cache_key ""
+          end
+          service = service_class.new(user)
+          expect(service.send(:cache_enabled?)).to be false
+        end
+
+        it "cache_enabled? returns true for symbol cache_key" do
+          service_class = Class.new(Services::Base) do
+            cache_key :service_cache
+          end
+          service = service_class.new(user)
+          expect(service.send(:cache_enabled?)).to be true
+        end
+
+        it "cache_enabled? returns true for string cache_key" do
+          service = cached_service_class.new(user)
+          expect(service.send(:cache_enabled?)).to eq(true)
+        end
+
+        it "cache_ttl returns integer seconds" do
+          expect(cached_service_class._cache_ttl).to be_a(Integer)
+        end
+
+        it "default cache_ttl is 900 seconds (15 minutes)" do
+          expect(Services::Base._cache_ttl).to eq(900)
         end
       end
 
@@ -164,6 +194,81 @@ module BetterService
 
           expect(signature.length).to eq(32)
           expect(signature).to match(/\A[a-f0-9]+\z/)
+        end
+
+        # Mutation-killing tests
+        it "build_cache_key returns string" do
+          service = cached_service_class.new(user)
+          cache_key = service.send(:build_cache_key, user)
+
+          expect(cache_key).to be_a(String)
+        end
+
+        it "build_cache_key contains exactly three parts separated by colons" do
+          service = cached_service_class.new(user, params: {})
+          cache_key = service.send(:build_cache_key, user)
+          parts = cache_key.split(":")
+
+          expect(parts.length).to eq(3)
+        end
+
+        it "build_cache_key uses user.id for user part" do
+          user_with_id = dummy_user_class.new(id: 999)
+          service = cached_service_class.new(user_with_id)
+          cache_key = service.send(:build_cache_key, user_with_id)
+
+          expect(cache_key).to include("user_999")
+        end
+
+        it "build_cache_key handles user with nil id" do
+          user_nil_id = dummy_user_class.new(id: nil)
+          service = cached_service_class.new(user_nil_id)
+          cache_key = service.send(:build_cache_key, user_nil_id)
+
+          expect(cache_key).to include("user_")
+          expect(cache_key).to be_a(String)
+        end
+
+        it "build_cache_key handles user with string id" do
+          user_str_id = dummy_user_class.new(id: "abc123")
+          service = cached_service_class.new(user_str_id)
+          cache_key = service.send(:build_cache_key, user_str_id)
+
+          expect(cache_key).to include("user_abc123")
+        end
+
+        it "cache_params_signature produces same hash for same params" do
+          service1 = cached_service_class.new(user, params: { a: 1, b: 2 })
+          service2 = cached_service_class.new(user, params: { a: 1, b: 2 })
+
+          sig1 = service1.send(:cache_params_signature)
+          sig2 = service2.send(:cache_params_signature)
+
+          expect(sig1).to eq(sig2)
+        end
+
+        it "cache_params_signature produces different hash for different params" do
+          service1 = cached_service_class.new(user, params: { a: 1 })
+          service2 = cached_service_class.new(user, params: { a: 2 })
+
+          sig1 = service1.send(:cache_params_signature)
+          sig2 = service2.send(:cache_params_signature)
+
+          expect(sig1).not_to eq(sig2)
+        end
+
+        it "cache_params_signature handles empty params" do
+          service = cached_service_class.new(user, params: {})
+          signature = service.send(:cache_params_signature)
+
+          expect(signature.length).to eq(32)
+        end
+
+        it "cache_params_signature handles nested params" do
+          service = cached_service_class.new(user, params: { a: { b: { c: 1 } } })
+          signature = service.send(:cache_params_signature)
+
+          expect(signature.length).to eq(32)
         end
       end
 
@@ -299,7 +404,335 @@ module BetterService
 
         it "cache_contexts inherited by subclasses" do
           subclass = Class.new(cached_service_class)
-          expect(subclass._cache_contexts).to eq(["bookings", "sidebar"])
+          expect(subclass._cache_contexts).to eq([ "bookings", "sidebar" ])
+        end
+
+        # Mutation-killing tests for invalidation
+        it "invalidate_cache_for early returns when _cache_contexts empty" do
+          service_class = Class.new(Services::Base) do
+            cache_key "test_empty_contexts"
+            # No cache_contexts defined
+          end
+
+          service = service_class.new(user)
+          service.send(:invalidate_cache_for, user)
+
+          # Should not call CacheService at all
+          expect(cache_service_mock.calls).to be_empty
+        end
+
+        it "invalidate_cache_for iterates over all contexts for user" do
+          service_class = Class.new(Services::Base) do
+            cache_contexts "context1", "context2", "context3"
+          end
+
+          service = service_class.new(user)
+          service.send(:invalidate_cache_for, user)
+
+          expect(cache_service_mock.calls.length).to eq(3)
+          expect(cache_service_mock.calls.map { |c| c[:context] }).to eq([ "context1", "context2", "context3" ])
+          expect(cache_service_mock.calls.all? { |c| c[:method] == :invalidate_for_context }).to be true
+        end
+
+        it "invalidate_cache_for iterates over all contexts for global" do
+          service_class = Class.new(Services::Base) do
+            cache_contexts "ctx_a", "ctx_b"
+          end
+
+          service = service_class.new(user)
+          service.send(:invalidate_cache_for, nil)
+
+          expect(cache_service_mock.calls.length).to eq(2)
+          expect(cache_service_mock.calls.map { |c| c[:context] }).to eq([ "ctx_a", "ctx_b" ])
+          expect(cache_service_mock.calls.all? { |c| c[:method] == :invalidate_global }).to be true
+        end
+
+        it "invalidate_cache_for passes exact user object to CacheService" do
+          service = cached_service_class.new(user)
+          service.send(:invalidate_cache_for, user)
+
+          user_calls = cache_service_mock.calls.select { |c| c[:method] == :invalidate_for_context }
+          expect(user_calls.all? { |c| c[:user].equal?(user) }).to be true
+        end
+
+        it "cache_contexts with symbols converts to array" do
+          service_class = Class.new(Services::Base) do
+            cache_contexts :bookings, :sidebar
+          end
+
+          expect(service_class._cache_contexts).to eq([ :bookings, :sidebar ])
+        end
+
+        it "cache_ttl accepts integer seconds" do
+          service_class = Class.new(Services::Base) do
+            cache_ttl 3600
+          end
+
+          expect(service_class._cache_ttl).to eq(3600)
+        end
+
+        it "cache_ttl accepts ActiveSupport duration" do
+          service_class = Class.new(Services::Base) do
+            cache_ttl 1.hour
+          end
+
+          expect(service_class._cache_ttl).to eq(3600)
+        end
+      end
+
+      describe "cache call wrapper" do
+        it "returns call_without_cache result when cache disabled" do
+          service = uncached_service_class.new(user)
+
+          # First call
+          result1 = service.call
+
+          # Create new service - should get different value (no caching)
+          service2 = uncached_service_class.new(user)
+          result2 = service2.call
+
+          # Values should be different because each call runs search_with fresh
+          expect(result1.resource).not_to eq(result2.resource)
+        end
+
+        it "caches result with correct TTL" do
+          Rails.cache.clear
+          service = cached_service_class.new(user)
+
+          result = service.call
+          cache_key = service.send(:build_cache_key, user)
+
+          # Verify cache entry exists
+          expect(Rails.cache.read(cache_key)).not_to be_nil
+        end
+
+        it "uses first cache_context for event publishing" do
+          service_class = Class.new(Services::Base) do
+            cache_key "multi_context_service"
+            cache_contexts "primary", "secondary", "tertiary"
+
+            search_with do
+              { value: 42 }
+            end
+          end
+
+          expect(service_class._cache_contexts.first).to eq("primary")
+        end
+
+        it "handles cache miss then hit on subsequent calls" do
+          Rails.cache.clear
+
+          service1 = cached_service_class.new(user, params: { x: 1 })
+          result1 = service1.call
+          value1 = result1.meta[:value]
+
+          # Second call should hit cache
+          service2 = cached_service_class.new(user, params: { x: 1 })
+          result2 = service2.call
+          value2 = result2.meta[:value]
+
+          # Same value from cache
+          expect(value1).to eq(value2)
+        end
+
+        it "does not cache when cache_enabled? returns false" do
+          Rails.cache.clear
+
+          # Service without cache_key
+          service1 = uncached_service_class.new(user)
+          service1.call
+
+          # No cache entry should exist for this service
+          # Since no cache_key, build_cache_key would fail, so we verify behavior differently
+          service2 = uncached_service_class.new(user)
+          result1 = service1.call
+          result2 = service2.call
+
+          # Different random values each time
+          expect(result1.resource).not_to eq(result2.resource)
+        end
+
+        it "cache key includes all three components" do
+          service = cached_service_class.new(user, params: { test: "value" })
+          cache_key = service.send(:build_cache_key, user)
+
+          parts = cache_key.split(":")
+          expect(parts[0]).to eq("test_service") # cache_key
+          expect(parts[1]).to match(/^user_\d+$/) # user part
+          expect(parts[2]).to match(/^[a-f0-9]{32}$/) # MD5 signature
+        end
+
+        it "Rails.cache.fetch is called with correct expires_in" do
+          Rails.cache.clear
+          service = cached_service_class.new(user)
+
+          # The TTL is 30.minutes = 1800 seconds
+          expect(cached_service_class._cache_ttl).to eq(1800)
+
+          service.call
+
+          cache_key = service.send(:build_cache_key, user)
+          expect(Rails.cache.read(cache_key)).not_to be_nil
+        end
+      end
+
+      describe "edge cases and boundary conditions" do
+        it "cache_params_signature handles nil in params hash" do
+          service = cached_service_class.new(user, params: { a: nil, b: 1 })
+          signature = service.send(:cache_params_signature)
+
+          expect(signature.length).to eq(32)
+        end
+
+        it "cache_params_signature handles array params" do
+          service = cached_service_class.new(user, params: { ids: [ 1, 2, 3 ] })
+          signature = service.send(:cache_params_signature)
+
+          expect(signature.length).to eq(32)
+        end
+
+        it "cache_params_signature produces consistent hash for array order" do
+          service1 = cached_service_class.new(user, params: { ids: [ 1, 2, 3 ] })
+          service2 = cached_service_class.new(user, params: { ids: [ 1, 2, 3 ] })
+
+          expect(service1.send(:cache_params_signature)).to eq(service2.send(:cache_params_signature))
+        end
+
+        it "cache_params_signature differs for different array order" do
+          service1 = cached_service_class.new(user, params: { ids: [ 1, 2, 3 ] })
+          service2 = cached_service_class.new(user, params: { ids: [ 3, 2, 1 ] })
+
+          expect(service1.send(:cache_params_signature)).not_to eq(service2.send(:cache_params_signature))
+        end
+
+        it "build_cache_key handles user with zero id" do
+          user_zero = dummy_user_class.new(id: 0)
+          service = cached_service_class.new(user_zero)
+          cache_key = service.send(:build_cache_key, user_zero)
+
+          expect(cache_key).to include("user_0")
+        end
+
+        it "build_cache_key handles user with negative id" do
+          user_neg = dummy_user_class.new(id: -1)
+          service = cached_service_class.new(user_neg)
+          cache_key = service.send(:build_cache_key, user_neg)
+
+          expect(cache_key).to include("user_-1")
+        end
+
+        it "cache_key DSL accepts symbol" do
+          service_class = Class.new(Services::Base) do
+            cache_key :my_cache
+          end
+
+          expect(service_class._cache_key).to eq(:my_cache)
+        end
+
+        it "cache_key DSL accepts string" do
+          service_class = Class.new(Services::Base) do
+            cache_key "my_cache"
+          end
+
+          expect(service_class._cache_key).to eq("my_cache")
+        end
+
+        it "multiple cache_key calls override previous value" do
+          service_class = Class.new(Services::Base) do
+            cache_key "first"
+            cache_key "second"
+          end
+
+          expect(service_class._cache_key).to eq("second")
+        end
+
+        it "multiple cache_ttl calls override previous value" do
+          service_class = Class.new(Services::Base) do
+            cache_ttl 10.minutes
+            cache_ttl 20.minutes
+          end
+
+          expect(service_class._cache_ttl).to eq(1200)
+        end
+
+        it "multiple cache_contexts calls override previous value" do
+          service_class = Class.new(Services::Base) do
+            cache_contexts "a", "b"
+            cache_contexts "c", "d"
+          end
+
+          expect(service_class._cache_contexts).to eq([ "c", "d" ])
+        end
+
+        it "cache_enabled? returns false for nil cache_key" do
+          service_class = Class.new(Services::Base) do
+            cache_key nil
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:cache_enabled?)).to be false
+        end
+
+        it "cache_enabled? returns false for false cache_key" do
+          service_class = Class.new(Services::Base) do
+            self._cache_key = false
+          end
+
+          service = service_class.new(user)
+          expect(service.send(:cache_enabled?)).to be false
+        end
+
+        it "invalidate_cache_for with empty array contexts does nothing" do
+          service_class = Class.new(Services::Base) do
+            cache_contexts # No arguments = empty array
+          end
+
+          service = service_class.new(user)
+          service.send(:invalidate_cache_for, user)
+
+          expect(cache_service_mock.calls).to be_empty
+        end
+      end
+
+      describe "inheritance behavior" do
+        it "subclass inherits cache_key" do
+          subclass = Class.new(cached_service_class)
+          expect(subclass._cache_key).to eq("test_service")
+        end
+
+        it "subclass can override cache_key" do
+          subclass = Class.new(cached_service_class) do
+            cache_key "subclass_cache"
+          end
+
+          expect(subclass._cache_key).to eq("subclass_cache")
+          expect(cached_service_class._cache_key).to eq("test_service")
+        end
+
+        it "subclass inherits cache_ttl" do
+          subclass = Class.new(cached_service_class)
+          expect(subclass._cache_ttl).to eq(1800)
+        end
+
+        it "subclass can override cache_ttl" do
+          subclass = Class.new(cached_service_class) do
+            cache_ttl 1.hour
+          end
+
+          expect(subclass._cache_ttl).to eq(3600)
+          expect(cached_service_class._cache_ttl).to eq(1800)
+        end
+
+        it "parent class unaffected by subclass override" do
+          subclass = Class.new(cached_service_class) do
+            cache_key "override"
+            cache_ttl 99
+            cache_contexts "new_ctx"
+          end
+
+          expect(cached_service_class._cache_key).to eq("test_service")
+          expect(cached_service_class._cache_ttl).to eq(1800)
+          expect(cached_service_class._cache_contexts).to eq([ "bookings", "sidebar" ])
         end
       end
     end

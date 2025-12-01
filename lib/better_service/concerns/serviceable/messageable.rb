@@ -43,7 +43,7 @@ module BetterService
         fallback_key = "better_service.services.default.#{action}"
 
         # I18n supports array of fallback keys: try each in order
-        I18n.t(full_key, default: [fallback_key.to_sym, key_path], **interpolations)
+        I18n.t(full_key, default: [ fallback_key.to_sym, key_path ], **interpolations)
       end
 
       # Extract action name from key path for fallback lookup

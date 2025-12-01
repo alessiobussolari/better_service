@@ -57,28 +57,28 @@ module BetterService
 
         it "tracks executed steps" do
           result = builder.test_build_success_result(
-            steps_executed: [:step1, :step2, :step3]
+            steps_executed: [ :step1, :step2, :step3 ]
           )
 
-          expect(result[:metadata][:steps_executed]).to eq([:step1, :step2, :step3])
+          expect(result[:metadata][:steps_executed]).to eq([ :step1, :step2, :step3 ])
         end
 
         it "tracks skipped steps" do
           result = builder.test_build_success_result(
-            steps_executed: [:step1],
-            steps_skipped: [:step2, :step3]
+            steps_executed: [ :step1 ],
+            steps_skipped: [ :step2, :step3 ]
           )
 
-          expect(result[:metadata][:steps_executed]).to eq([:step1])
-          expect(result[:metadata][:steps_skipped]).to eq([:step2, :step3])
+          expect(result[:metadata][:steps_executed]).to eq([ :step1 ])
+          expect(result[:metadata][:steps_skipped]).to eq([ :step2, :step3 ])
         end
 
         it "includes branch decisions when present" do
-          builder.branch_decisions = ["branch_1:on_1", "nested_branch_1:otherwise"]
+          builder.branch_decisions = [ "branch_1:on_1", "nested_branch_1:otherwise" ]
 
           result = builder.test_build_success_result
 
-          expect(result[:metadata][:branches_taken]).to eq(["branch_1:on_1", "nested_branch_1:otherwise"])
+          expect(result[:metadata][:branches_taken]).to eq([ "branch_1:on_1", "nested_branch_1:otherwise" ])
         end
 
         it "excludes branch decisions when empty" do
@@ -143,11 +143,11 @@ module BetterService
         it "includes failed step in metadata" do
           result = builder.test_build_failure_result(
             failed_step: :payment_step,
-            steps_executed: [:order_step]
+            steps_executed: [ :order_step ]
           )
 
           expect(result[:metadata][:failed_step]).to eq(:payment_step)
-          expect(result[:metadata][:steps_executed]).to eq([:order_step])
+          expect(result[:metadata][:steps_executed]).to eq([ :order_step ])
         end
 
         it "excludes nil failed_step from metadata" do
@@ -158,18 +158,18 @@ module BetterService
 
         it "includes provided errors" do
           result = builder.test_build_failure_result(
-            errors: { payment: ["Card declined"] }
+            errors: { payment: [ "Card declined" ] }
           )
 
-          expect(result[:errors]).to eq({ payment: ["Card declined"] })
+          expect(result[:errors]).to eq({ payment: [ "Card declined" ] })
         end
 
         it "includes branch decisions when present" do
-          builder.branch_decisions = ["branch_1:on_2"]
+          builder.branch_decisions = [ "branch_1:on_2" ]
 
           result = builder.test_build_failure_result
 
-          expect(result[:metadata][:branches_taken]).to eq(["branch_1:on_2"])
+          expect(result[:metadata][:branches_taken]).to eq([ "branch_1:on_2" ])
         end
       end
 

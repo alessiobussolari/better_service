@@ -155,7 +155,7 @@ RSpec.describe "Advanced Workflow Branching" do
       }.to raise_error(BetterService::Errors::Workflowable::Runtime::StepExecutionError)
 
       # Rollbacks should execute in reverse order (LIFO)
-      expect(tracker).to eq([:rollback2, :rollback1])
+      expect(tracker).to eq([ :rollback2, :rollback1 ])
     end
   end
 
@@ -217,7 +217,7 @@ RSpec.describe "Advanced Workflow Branching" do
       result = workflow.call
 
       steps = result[:metadata][:steps_executed]
-      expect(steps).to eq([:linear1, :linear2, :premium_feature, :linear3, :linear4])
+      expect(steps).to eq([ :linear1, :linear2, :premium_feature, :linear3, :linear4 ])
     end
   end
 
@@ -433,7 +433,7 @@ RSpec.describe "Advanced Workflow Branching" do
       expect { workflow.call }.to raise_error(BetterService::Errors::Workflowable::Runtime::StepExecutionError)
 
       # LIFO: c, b, a
-      expect(execution_order).to eq([:rollback_c, :rollback_b, :rollback_a])
+      expect(execution_order).to eq([ :rollback_c, :rollback_b, :rollback_a ])
     end
   end
 end

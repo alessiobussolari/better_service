@@ -227,7 +227,7 @@ RSpec.describe "Workflow Integration", type: :integration do
       }.to raise_error(BetterService::Errors::Workflowable::Runtime::StepExecutionError)
 
       # Rollbacks should be in LIFO order
-      expect(rollback_order).to eq([:b, :a])
+      expect(rollback_order).to eq([ :b, :a ])
     end
   end
 
@@ -268,7 +268,7 @@ RSpec.describe "Workflow Integration", type: :integration do
       expect(result[:metadata]).to have_key(:branches_taken)
       expect(result[:metadata]).to have_key(:duration_ms)
 
-      expect(result[:metadata][:steps_executed]).to eq([:validate, :branch_step, :finalize])
+      expect(result[:metadata][:steps_executed]).to eq([ :validate, :branch_step, :finalize ])
       expect(result[:metadata][:duration_ms]).to be_a(Numeric)
     end
   end
@@ -376,7 +376,7 @@ RSpec.describe "Workflow Integration", type: :integration do
                process_with { raise StandardError, "Required step failed" }
              },
              input: ->(ctx) { {} }
-             # Note: optional: true is NOT set
+        # Note: optional: true is NOT set
 
         step :never_reached,
              with: Class.new(BetterService::Services::Base) {

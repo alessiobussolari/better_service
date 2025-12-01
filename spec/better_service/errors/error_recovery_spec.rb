@@ -22,7 +22,7 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
   describe "Exception chaining and original_error preservation" do
     it "preserves the original error through multiple wrapping layers" do
       original = ArgumentError.new("Original argument error")
-      original.set_backtrace(["original.rb:1", "original.rb:2"])
+      original.set_backtrace([ "original.rb:1", "original.rb:2" ])
 
       wrapped_once = BetterService::Errors::Runtime::ExecutionError.new(
         "First wrap",
@@ -116,7 +116,7 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
       # Service catches AuthorizationError and returns failure result
       result = service.call
 
-      # With use_result_wrapper = true (default), result is a BetterService::Result
+      # Result is always a BetterService::Result
       expect(result).to be_failure
       expect(result.meta[:error_code]).to eq(:unauthorized)
     end
@@ -184,7 +184,7 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
     end
 
     it "handles composite key as array" do
-      composite_key = [123, "US", 2024]
+      composite_key = [ 123, "US", 2024 ]
       error = BetterService::Errors::Runtime::ResourceNotFoundError.new(
         "Record not found",
         code: :resource_not_found,
@@ -284,7 +284,7 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
         code: :validation_failed,
         context: {
           service: "ProductService",
-          validation_errors: { name: ["is required"], price: ["must be positive"] },
+          validation_errors: { name: [ "is required" ], price: [ "must be positive" ] },
           params: { name: nil, price: -10 }
         }
       )
@@ -311,7 +311,7 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
       hash = error.to_h
 
       expect(hash[:context][:validation_errors]).to be_a(Hash)
-      expect(hash[:context][:validation_errors][:name]).to eq(["is required"])
+      expect(hash[:context][:validation_errors][:name]).to eq([ "is required" ])
     end
 
     it "backtrace is limited to first 10 entries" do

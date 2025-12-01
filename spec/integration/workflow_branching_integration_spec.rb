@@ -102,7 +102,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:validate_product, :send_notification, :schedule_promotion]
+      expect(result[:metadata][:steps_executed]).to eq [ :validate_product, :send_notification, :schedule_promotion ]
       expect(result[:metadata][:branches_taken].count).to eq 2
       expect(result[:metadata][:branches_taken]).to include "branch_1:on_1"
       expect(result[:context].send_notification[:sent]).to be true
@@ -121,7 +121,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:validate_product, :send_notification]
+      expect(result[:metadata][:steps_executed]).to eq [ :validate_product, :send_notification ]
       expect(result[:metadata][:branches_taken].count).to eq 2
       expect(result[:context].send_notification[:sent]).to be true
       expect(result[:context]).not_to respond_to(:schedule_promotion)
@@ -139,7 +139,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:validate_product, :send_draft_reminder]
+      expect(result[:metadata][:steps_executed]).to eq [ :validate_product, :send_draft_reminder ]
       expect(result[:metadata][:branches_taken]).to include "branch_1:otherwise"
       expect(result[:context].send_draft_reminder[:reminder_sent]).to be true
     end
@@ -235,7 +235,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:fetch_booking, :auto_approve, :send_notification]
+      expect(result[:metadata][:steps_executed]).to eq [ :fetch_booking, :auto_approve, :send_notification ]
       expect(result[:metadata][:branches_taken]).to include "branch_1:on_1"
       expect(result[:context].auto_approve[:status]).to eq "auto_approved"
     end
@@ -252,7 +252,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:fetch_booking, :request_manager_approval, :send_notification]
+      expect(result[:metadata][:steps_executed]).to eq [ :fetch_booking, :request_manager_approval, :send_notification ]
       expect(result[:metadata][:branches_taken]).to include "branch_1:on_2"
       expect(result[:context].request_manager_approval[:status]).to eq "pending_manager"
     end
@@ -269,7 +269,7 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
       result = workflow.call
 
       expect(result[:success]).to be true
-      expect(result[:metadata][:steps_executed]).to eq [:fetch_booking, :request_executive_approval, :send_notification]
+      expect(result[:metadata][:steps_executed]).to eq [ :fetch_booking, :request_executive_approval, :send_notification ]
       expect(result[:metadata][:branches_taken]).to include "branch_1:otherwise"
       expect(result[:context].request_executive_approval[:status]).to eq "pending_executive"
     end
@@ -386,12 +386,12 @@ RSpec.describe "Workflow Branching Integration", type: :integration do
 
       admin_result = workflow_class.new(admin_user, params: {}).call
       expect(admin_result[:success]).to be true
-      expect(admin_result[:metadata][:steps_executed]).to eq [:validate, :admin_action]
+      expect(admin_result[:metadata][:steps_executed]).to eq [ :validate, :admin_action ]
       expect(admin_result[:context].admin_action[:admin_action]).to be true
 
       user_result = workflow_class.new(regular_user, params: {}).call
       expect(user_result[:success]).to be true
-      expect(user_result[:metadata][:steps_executed]).to eq [:validate, :user_action]
+      expect(user_result[:metadata][:steps_executed]).to eq [ :validate, :user_action ]
       expect(user_result[:context].user_action[:user_action]).to be true
     end
   end

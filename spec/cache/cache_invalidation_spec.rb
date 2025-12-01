@@ -18,8 +18,6 @@ RSpec.describe "Cache Invalidation Scenarios" do
 
   before do
     Rails.cache.clear
-    # Disable result wrapper for cache tests - returns [object, metadata] tuple
-    BetterService.configure { |c| c.use_result_wrapper = false }
   end
 
   after do

@@ -3,7 +3,7 @@
 module BetterService
   module Concerns
     module Serviceable
-      # Authorizable adds authorization support to services.
+    # Authorizable adds authorization support to services.
     #
     # Use the `authorize_with` DSL to define authorization logic that runs
     # BEFORE the search phase (fail fast principle).

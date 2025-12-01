@@ -53,12 +53,6 @@ RSpec.describe BetterService::Configuration do
         expect(config.cache_invalidation_map).to eq({})
       end
     end
-
-    describe "#use_result_wrapper" do
-      it "defaults to true" do
-        expect(config.use_result_wrapper).to be true
-      end
-    end
   end
 
   describe "setters" do
@@ -85,7 +79,7 @@ RSpec.describe BetterService::Configuration do
 
     describe "#instrumentation_excluded_services=" do
       it "allows setting services list" do
-        services = ["HealthCheckService", "PingService"]
+        services = [ "HealthCheckService", "PingService" ]
         config.instrumentation_excluded_services = services
         expect(config.instrumentation_excluded_services).to eq(services)
       end
@@ -109,13 +103,6 @@ RSpec.describe BetterService::Configuration do
       it "allows setting to true" do
         config.stats_subscriber_enabled = true
         expect(config.stats_subscriber_enabled).to be true
-      end
-    end
-
-    describe "#use_result_wrapper=" do
-      it "allows setting to false" do
-        config.use_result_wrapper = false
-        expect(config.use_result_wrapper).to be false
       end
     end
   end
@@ -205,7 +192,7 @@ RSpec.describe BetterService::Configuration do
         c.instrumentation_enabled = true
         c.instrumentation_include_args = false
         c.instrumentation_include_result = true
-        c.instrumentation_excluded_services = ["HealthCheckService"]
+        c.instrumentation_excluded_services = [ "HealthCheckService" ]
         c.log_subscriber_enabled = true
         c.log_subscriber_level = :debug
         c.stats_subscriber_enabled = true
@@ -216,7 +203,7 @@ RSpec.describe BetterService::Configuration do
       expect(result.instrumentation_enabled).to be true
       expect(result.instrumentation_include_args).to be false
       expect(result.instrumentation_include_result).to be true
-      expect(result.instrumentation_excluded_services).to eq(["HealthCheckService"])
+      expect(result.instrumentation_excluded_services).to eq([ "HealthCheckService" ])
       expect(result.log_subscriber_enabled).to be true
       expect(result.log_subscriber_level).to eq(:debug)
       expect(result.stats_subscriber_enabled).to be true

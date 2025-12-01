@@ -39,7 +39,7 @@ module BetterService
           presenter presenter_class
 
           search_with do
-            { items: [{ name: "Item 1" }, { name: "Item 2" }] }
+            { items: [ { name: "Item 1" }, { name: "Item 2" } ] }
           end
         end
       end
@@ -82,7 +82,7 @@ module BetterService
       describe "collection presentation" do
         it "transform applies presenter to items collection" do
           service = service_with_presenter_class.new(user)
-          data = { items: [{ name: "Item 1" }, { name: "Item 2" }] }
+          data = { items: [ { name: "Item 1" }, { name: "Item 2" } ] }
 
           result = service.send(:transform, data)
 
@@ -101,7 +101,7 @@ module BetterService
 
         it "presenter initialized with options for collection" do
           service = service_with_presenter_options_class.new(user)
-          data = { items: [{ price: 100 }] }
+          data = { items: [ { price: 100 } ] }
 
           result = service.send(:transform, data)
           presenter = result[:items].first
@@ -111,7 +111,7 @@ module BetterService
 
         it "transform preserves additional data with items" do
           service = service_with_presenter_class.new(user)
-          data = { items: [{ name: "Item" }], pagination: { page: 1 }, stats: { total: 10 } }
+          data = { items: [ { name: "Item" } ], pagination: { page: 1 }, stats: { total: 10 } }
 
           result = service.send(:transform, data)
 
@@ -122,7 +122,7 @@ module BetterService
 
         it "transform handles nil items gracefully" do
           service = service_with_presenter_class.new(user)
-          data = { items: [nil, { name: "Valid" }] }
+          data = { items: [ nil, { name: "Valid" } ] }
 
           result = service.send(:transform, data)
 
@@ -173,7 +173,7 @@ module BetterService
       describe "edge cases and integration" do
         it "transform returns data unchanged when no presenter" do
           service = Services::Base.new(user)
-          data = { items: [{ name: "Item" }] }
+          data = { items: [ { name: "Item" } ] }
 
           result = service.send(:transform, data)
 
@@ -182,7 +182,7 @@ module BetterService
 
         it "transform returns data unchanged when no items/resource keys" do
           service = service_with_presenter_class.new(user)
-          data = { custom_data: [1, 2, 3] }
+          data = { custom_data: [ 1, 2, 3 ] }
 
           result = service.send(:transform, data)
 
@@ -200,7 +200,7 @@ module BetterService
           end
 
           service = service_class.new(user)
-          data = { items: [{ name: "Item" }] }
+          data = { items: [ { name: "Item" } ] }
           result = service.send(:transform, data)
 
           expect(result).to eq({ custom: "transformed" })
@@ -212,7 +212,7 @@ module BetterService
             presenter presenter_class
 
             search_with do
-              { items: [{ name: "Item 1" }] }
+              { items: [ { name: "Item 1" } ] }
             end
 
             process_with do |data|
@@ -234,7 +234,7 @@ module BetterService
               end
             end
 
-            search_with { { items: [{}] } }
+            search_with { { items: [ {} ] } }
           end
 
           _object, meta = service_class.new(user).call
@@ -247,7 +247,7 @@ module BetterService
         it "transform works with ActiveRecord-like objects" do
           ar_object = Struct.new(:id, :name).new(1, "Record")
           service = service_with_presenter_class.new(user)
-          data = { items: [ar_object] }
+          data = { items: [ ar_object ] }
 
           result = service.send(:transform, data)
 
@@ -260,7 +260,7 @@ module BetterService
             presenter presenter_class
             presenter_options { { user_id: user.id } }
 
-            search_with { { items: [{ name: "Item" }] } }
+            search_with { { items: [ { name: "Item" } ] } }
           end
 
           items, _meta = service_class.new(user).call

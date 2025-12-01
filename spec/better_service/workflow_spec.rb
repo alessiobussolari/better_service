@@ -44,7 +44,7 @@ module BetterService
 
     let(:failing_service_class) do
       Class.new(Services::Base) do
-        schema {}
+        schema { }
 
         process_with do |_data|
           raise StandardError, "Service failed"
@@ -82,7 +82,7 @@ module BetterService
         # Anonymous classes have nil name, so workflow metadata is nil
         # In real usage with named classes, it would contain the class name
         expect(result[:metadata]).to have_key(:workflow)
-        expect(result[:metadata][:steps_executed]).to eq([:first, :second])
+        expect(result[:metadata][:steps_executed]).to eq([ :first, :second ])
         expect(result[:metadata][:steps_skipped]).to eq([])
         expect(result[:metadata][:duration_ms]).to be_a(Numeric)
       end
@@ -230,14 +230,14 @@ module BetterService
 
         expect(result[:success]).to be true
         expect(result[:metadata][:steps_executed]).to eq([])
-        expect(result[:metadata][:steps_skipped]).to eq([:first])
+        expect(result[:metadata][:steps_skipped]).to eq([ :first ])
       end
 
       it "conditional step is executed when condition is true" do
         result = conditional_workflow_class.new(user, params: { initial_value: 5, should_run: true }).call
 
         expect(result[:success]).to be true
-        expect(result[:metadata][:steps_executed]).to eq([:first])
+        expect(result[:metadata][:steps_executed]).to eq([ :first ])
         expect(result[:metadata][:steps_skipped]).to eq([])
       end
     end
@@ -279,7 +279,7 @@ module BetterService
           step :first,
                with: first_svc,
                input: ->(ctx) { { value: ctx.initial_value } },
-               rollback: ->(ctx) {}
+               rollback: ->(ctx) { }
 
           step :failing,
                with: failing_svc

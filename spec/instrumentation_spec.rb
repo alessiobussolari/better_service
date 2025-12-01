@@ -269,7 +269,7 @@ RSpec.describe BetterService::Concerns::Instrumentation do
 
     it "specific services can be excluded from instrumentation" do
       BetterService.configure do |config|
-        config.instrumentation_excluded_services = ["InstrumentationSimpleTestService"]
+        config.instrumentation_excluded_services = [ "InstrumentationSimpleTestService" ]
       end
 
       service = InstrumentationSimpleTestService.new(@user, params: { name: "test" })
@@ -281,7 +281,7 @@ RSpec.describe BetterService::Concerns::Instrumentation do
 
     it "non-excluded services still publish events when others are excluded" do
       BetterService.configure do |config|
-        config.instrumentation_excluded_services = ["OtherService"]
+        config.instrumentation_excluded_services = [ "OtherService" ]
       end
 
       service = InstrumentationSimpleTestService.new(@user, params: { name: "test" })
@@ -433,6 +433,32 @@ RSpec.describe BetterService::Concerns::Instrumentation do
 
       expect(service_names.any? { |name| name.end_with?("InstrumentationSimpleTestService") }).to be true
       expect(service_names.any? { |name| name.end_with?("InstrumentationSlowTestService") }).to be true
+    end
+  end
+
+  describe "Result Type Validation" do
+    # Note: Services that override `call` completely bypass the instrumentation wrapper.
+    # The InvalidResultError validation is tested in the Step spec and InvalidResultError spec.
+    # Here we only verify that services using the normal flow always return Result.
+
+    it "service using normal flow returns BetterService::Result" do
+      service = InstrumentationSimpleTestService.new(@user, params: { name: "test" })
+
+      result = service.call
+
+      expect(result).to be_a(BetterService::Result)
+      expect(result.success?).to be true
+    end
+
+    it "all service responses are BetterService::Result" do
+      # Successful service
+      result1 = InstrumentationSimpleTestService.new(@user, params: { name: "test" }).call
+      expect(result1).to be_a(BetterService::Result)
+
+      # Service with error
+      result2 = InstrumentationFailingTestService.new(@user, params: {}).call
+      expect(result2).to be_a(BetterService::Result)
+      expect(result2.failure?).to be true
     end
   end
 end

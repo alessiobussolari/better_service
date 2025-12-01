@@ -27,7 +27,7 @@ RSpec.describe OrderPresenter do
   end
 
   describe "with include_items option" do
-    let(:presenter) { described_class.new(order, current_user: user, fields: [:items]) }
+    let(:presenter) { described_class.new(order, current_user: user, fields: [ :items ]) }
 
     it "includes order items" do
       json = presenter.as_json
@@ -37,7 +37,7 @@ RSpec.describe OrderPresenter do
   end
 
   describe "with include_payment option" do
-    let(:presenter) { described_class.new(paid_order, current_user: user, fields: [:payment]) }
+    let(:presenter) { described_class.new(paid_order, current_user: user, fields: [ :payment ]) }
 
     it "includes payment information" do
       json = presenter.as_json

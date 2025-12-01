@@ -258,7 +258,7 @@ RSpec.describe BetterService::Errors::Runtime do
       described_class.new(
         "Validation failed",
         code: BetterService::ErrorCodes::VALIDATION_FAILED,
-        context: { validation_errors: { name: ["is required"] } }
+        context: { validation_errors: { name: [ "is required" ] } }
       )
     end
 
@@ -428,7 +428,7 @@ RSpec.describe BetterService::Errors::Workflowable::Runtime do
       described_class.new(
         "Workflow failed",
         code: BetterService::ErrorCodes::WORKFLOW_FAILED,
-        context: { workflow: "TestWorkflow", steps_executed: [:step1, :step2] }
+        context: { workflow: "TestWorkflow", steps_executed: [ :step1, :step2 ] }
       )
     end
 
@@ -466,7 +466,7 @@ RSpec.describe BetterService::Errors::Workflowable::Runtime do
         "Rollback error",
         code: BetterService::ErrorCodes::ROLLBACK_FAILED,
         original_error: original,
-        context: { step: :step_with_rollback, executed_steps: [:step1, :step2] }
+        context: { step: :step_with_rollback, executed_steps: [ :step1, :step2 ] }
       )
     end
 
