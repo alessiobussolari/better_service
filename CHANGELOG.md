@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-12-01
+
 ### Removed
 
 - **Viewable concern** - Removed the View Phase (phase 5) from service architecture
@@ -14,6 +16,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `viewer` DSL from services
   - Updated architecture from 5-phase to 4-phase (validation → authorization → search → process → respond)
   - View configuration should now be handled in controllers
+
+### Added
+
+- **RuboCop Rails Omakase** - Integrated Rails-standard linting
+  - Auto-corrected 354 offenses for consistent code style
+  - Added `rubocop-rails-omakase` gem dependency
+- **Mutation testing infrastructure** - Added Mutant gem configuration
+  - `.mutant.yml` configuration file
+  - `spec/mutant_boot.rb` for Rails integration
+  - Ready for mutation testing analysis
+
+### Changed
+
+- **Expanded test suite** - From 435 to 1,000+ tests
+  - 812 gem unit tests (RSpec)
+  - 275 Rails integration tests
+  - Improved coverage for Messageable, Cacheable, and Base concerns
 
 ## [2.0.0] - 2025-11-28
 

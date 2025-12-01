@@ -27,11 +27,11 @@
 
 BetterService is a comprehensive Service Objects framework for Rails that brings clean architecture and powerful features to your business logic layer.
 
-**Version 2.0.0** • 435 tests passing (180 gem + 255 rails_app)
+**Version 2.1.0** • 1,000+ tests passing (812 gem + 275 rails_app)
 
 ### Core Features
 
-- 🎯 **5-Phase Flow Architecture**: Structured flow with validation → authorization → search → process → respond
+- 🎯 **4-Phase Flow Architecture**: Structured flow with validation → authorization → search → process → respond
 - 📦 **Result Wrapper**: `BetterService::Result` with `.success?`, `.resource`, `.meta`, `.message` and destructuring support
 - 🏛️ **Repository Pattern**: Clean data access with `RepositoryAware` concern and `repository :model_name` DSL
 - ✅ **Mandatory Schema Validation**: Built-in [Dry::Schema](https://dry-rb.org/gems/dry-schema/) validation for all params
