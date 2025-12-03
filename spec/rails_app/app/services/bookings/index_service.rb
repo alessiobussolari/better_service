@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Booking
+module Bookings
   class IndexService < BetterService::Services::Base
     # Action name for metadata
     performed_action :listed
