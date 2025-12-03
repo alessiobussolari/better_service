@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require_relative "../../spec_helper"
 
 RSpec.describe Product::UpdateService do
   include_context "with products"
