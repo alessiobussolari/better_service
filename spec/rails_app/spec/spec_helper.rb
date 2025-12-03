@@ -4,7 +4,11 @@ require "bundler/setup"
 
 ENV["RAILS_ENV"] ||= "test"
 
-require_relative "../config/environment"
+# Only initialize Rails if not already initialized (avoids FrozenError in CI)
+unless defined?(Rails) && Rails.application&.initialized?
+  require_relative "../config/environment"
+end
+
 require "rspec/rails"
 
 # Require support files

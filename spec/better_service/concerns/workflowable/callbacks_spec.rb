@@ -279,7 +279,8 @@ RSpec.describe BetterService::Concerns::Workflowable::Callbacks do
   end
 
   describe "#run_around_step_callbacks" do
-    let(:step) { double("Step", name: :process_order) }
+    # Use a real Struct instead of RSpec double
+    let(:step) { Struct.new(:name).new(:process_order) }
 
     it "executes the block when no callbacks defined" do
       empty_workflow = Class.new do

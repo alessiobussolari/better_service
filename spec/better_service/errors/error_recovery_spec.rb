@@ -207,13 +207,22 @@ RSpec.describe "Error Recovery and Advanced Error Handling" do
   end
 
   describe "DatabaseError wrapping ActiveRecord errors" do
+    # Simple struct to simulate an ActiveModel record for error testing
+    let(:mock_record_class) do
+      Struct.new(:errors) do
+        def read_attribute_for_validation(_attr)
+          nil
+        end
+      end
+    end
+
     it "wraps RecordInvalid with validation details" do
-      # Create a simple mock object that responds to errors
-      mock_record = double("Record")
+      # Create a real struct object with real ActiveModel::Errors
+      mock_record = mock_record_class.new
       mock_errors = ActiveModel::Errors.new(mock_record)
       mock_errors.add(:name, "can't be blank")
       mock_errors.add(:email, "is invalid")
-      allow(mock_record).to receive(:errors).and_return(mock_errors)
+      mock_record.errors = mock_errors
 
       # Create a simple StandardError to simulate RecordInvalid
       ar_error = StandardError.new("Validation failed")

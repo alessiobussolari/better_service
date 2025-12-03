@@ -23,19 +23,14 @@ RSpec.describe "Workflow Integration", type: :integration do
     end
 
     it "executes complete checkout workflow successfully" do
-      # Allow payment services to work without external APIs
-      allow_any_instance_of(Payment::Stripe::ChargeService).to receive(:call).and_return({
-        success: true,
-        resource: Payment.new(id: 1, status: :completed, transaction_id: "ch_test")
-      })
-
+      # No mock needed - PaymentService simulates Stripe internally
       workflow = Order::CheckoutWorkflow.new(user, params: {
         order_id: checkout_order.id,
         payment_provider: "stripe",
         card_token: "tok_test123"
       })
 
-      # Due to external dependencies, just verify workflow structure
+      # Verify workflow structure and inheritance
       expect(workflow).to respond_to(:call)
       expect(workflow.class.ancestors).to include(BetterService::Workflows::Base)
     end
