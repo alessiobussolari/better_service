@@ -75,7 +75,7 @@ jobs:
         env:
           RAILS_ENV: test
           COVERAGE: true
-        run: bin/test
+        run: bundle exec rspec
 
       - name: Upload coverage to Codecov
         if: matrix.ruby-version == '3.3'
