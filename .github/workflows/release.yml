@@ -53,7 +53,7 @@ jobs:
           gem push better_service-${{ steps.version.outputs.VERSION }}.gem
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: better_service-${{ steps.version.outputs.VERSION }}.gem
           generate_release_notes: true
