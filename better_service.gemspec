@@ -25,6 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "dry-schema", "~> 1.13"
 
   # Development dependencies
-  spec.add_development_dependency "minitest", "~> 5.0"
+  spec.add_development_dependency "minitest", "~> 6.0"
   spec.add_development_dependency "rubocop-rails-omakase", "~> 1.0"
 end
