@@ -20,7 +20,7 @@ gem "factory_bot_rails"
 gem "shoulda-matchers"
 
 # Mutation testing
-gem "mutant-rspec", "~> 0.12"
+gem "mutant-rspec", "~> 0.14"
 
 # Start debugger with binding.b [https://github.com/ruby/debug]
 # gem "debug", ">= 1.0.0"
